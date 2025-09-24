@@ -1,0 +1,48 @@
+{
+  "name": "voice-ui",
+  "version": "0.1.0",
+  "description": "A lightweight JavaScript library for adding voice command and synthesis capabilities to web applications using the Web Speech API.",
+  "main": "dist/voice-ui.cjs.js",       
+  "module": "dist/voice-ui.esm.js",     
+  "unpkg": "dist/voice-ui.umd.min.js",  
+  "browser": "dist/voice-ui.umd.js",    
+  "type": "module",                     
+  "exports": {
+    ".": {
+      "import": "./dist/voice-ui.esm.js",
+      "require": "./dist/voice-ui.cjs.js",
+      "browser": "./dist/voice-ui.umd.js"
+    }
+  },
+  "scripts": {
+    "build": "rollup -c",
+    "dev": "rollup -c -w",              
+    "test": "jest",
+    "lint": "eslint src/",
+    "prepare": "npm run build"        
+  },
+  "keywords": [
+    "voice",
+    "ui",
+    "speech",
+    "recognition",
+    "synthesis",
+    "web speech api",
+    "javascript",
+    "accessibility"
+  ],
+  "author": "Your Name <your.email@example.com>",
+  "license": "MIT",
+  "devDependencies": {
+    "@babel/core": "^7.23.9",
+    "@babel/preset-env": "^7.23.9",
+    "@rollup/plugin-babel": "^6.0.4",
+    "@rollup/plugin-commonjs": "^25.0.7",
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-terser": "^0.4.4",
+    "eslint": "^8.56.0",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "rollup": "^4.9.6"
+  }
+}
