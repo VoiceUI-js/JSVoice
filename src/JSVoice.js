@@ -1,5 +1,3 @@
-// src/VoiceUI.js
-
 import { callCallback, cleanText } from './utils/helpers.js';
 import { initRecognition, checkMicrophonePermission } from './modules/RecognitionManager.js';
 import { processCommand } from './modules/CommandProcessor.js';
@@ -7,20 +5,27 @@ import { processCommand } from './modules/CommandProcessor.js';
 /**
  * JSVoice Library (formerly VoiceUI)
  * A JavaScript library for integrating voice commands and speech synthesis into web applications.
+ *
+ * NOTE: All references to the old name (VoiceUI) have been replaced with JSVoice.
  */
-class VoiceUI {
+class JSVoice { // <--- 1. CRITICAL CHANGE: Class renamed
   static _isApiSupported = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
-
+  
   static get isApiSupported() {
-    return VoiceUI._isApiSupported;
+    return JSVoice._isApiSupported; // <--- 2. Internal static reference updated
   }
 
   /**
-   * Creates an instance of VoiceUI.
-   * @param {VoiceUIOptions} options - Configuration options for the VoiceUI library.
+   * @typedef {Object} JSVoiceOptions
+   * // (rest of the typedef structure remains the same)
+   */
+
+  /**
+   * Creates an instance of JSVoice. // <--- JSDoc updated
+   * @param {JSVoiceOptions} options - Configuration options for the JSVoice library. // <--- JSDoc updated
    */
   constructor(options = {}) {
-    if (!VoiceUI.isApiSupported) {
+    if (!JSVoice.isApiSupported) { // <--- 3. Static access updated
       console.warn("[JSVoice] Web Speech API not supported by this browser.");
       this._callCallback('onStatusChange', "Voice commands not supported by your browser. Try Chrome or Edge.");
       return;
@@ -44,38 +49,39 @@ class VoiceUI {
       onStatusChange: () => {},
       ...options,
     };
-
+    
     this.recognition = null;
     this.speechSynthesis = window.speechSynthesis;
 
     // State object to pass by reference to modules
     this._state = {
-        _isListening: false,
-        _microphoneAllowed: false,
+      _isListening: false,
+      _microphoneAllowed: false,
     };
+    
     this._currentVoiceFeedback = "Initializing voice commands...";
     this._commands = {};
-
+    
     for (const phrase in this.options.commands) {
       this._commands[cleanText(phrase)] = this.options.commands[phrase];
     }
-
+    
     // Initialize Recognition Manager
     this.recognition = initRecognition(
-        this.options,
-        this._updateStatus.bind(this),
-        this._callCallback.bind(this),
-        this._processCommand.bind(this),
-        this._startRecognitionInternal.bind(this),
-        this._state
+      this.options,
+      this._updateStatus.bind(this),
+      this._callCallback.bind(this),
+      this._processCommand.bind(this),
+      this._startRecognitionInternal.bind(this),
+      this._state
     );
-
+    
     // Initial microphone check
     this._initialMicrophoneCheckPromise = this._checkMicrophonePermission().catch(e => {
-        if (e && e.name === 'NotAllowedError') return;
-        // Other errors are handled and status is updated inside checkMicrophonePermission
+      if (e && e.name === 'NotAllowedError') return;
+      // Other errors are handled and status is updated inside checkMicrophonePermission
     });
-
+    
     this._updateStatus("Voice commands ready. Click mic to start.");
   }
 
@@ -83,32 +89,32 @@ class VoiceUI {
   _callCallback(callbackName, ...args) {
     callCallback(this.options, callbackName, ...args);
   }
-
+  
   /** Updates the internal status and calls the status change callback. */
   _updateStatus(message) {
     this._currentVoiceFeedback = message;
     this._callCallback('onStatusChange', message);
   }
-
+  
   /** Imports and runs the mic permission check from RecognitionManager. */
   async _checkMicrophonePermission() {
     return checkMicrophonePermission(
-        this._updateStatus.bind(this),
-        this._callCallback.bind(this),
-        this._state
+      this._updateStatus.bind(this),
+      this._callCallback.bind(this),
+      this._state
     );
   }
-
+  
   /** Imports and runs the command processing logic from CommandProcessor. */
   async _processCommand(rawTranscript) {
     return processCommand(
-        rawTranscript,
-        this._commands,
-        this._updateStatus.bind(this),
-        this._callCallback.bind(this)
+      rawTranscript,
+      this._commands,
+      this._updateStatus.bind(this),
+      this._callCallback.bind(this)
     );
   }
-
+  
   /** Internal method to safely start recognition. */
   _startRecognitionInternal() {
     if (this.recognition && !this._state._isListening) {
@@ -133,24 +139,26 @@ class VoiceUI {
     }
     return false;
   }
-
+  
   /**
    * Starts speech recognition.
    */
   async start() {
-    if (!VoiceUI.isApiSupported) {
+    if (!JSVoice.isApiSupported) { // <--- 4. Static access updated
       this._updateStatus("Voice commands not supported by your browser.");
       return false;
     }
+    
     await this._initialMicrophoneCheckPromise;
 
     if (!this._state._microphoneAllowed) {
       this._updateStatus("Microphone access denied. Cannot start voice commands.");
       return false;
     }
+    
     return this._startRecognitionInternal();
   }
-
+  
   /**
    * Stops speech recognition.
    */
@@ -159,7 +167,7 @@ class VoiceUI {
       this.recognition.stop();
     }
   }
-
+  
   /**
    * Toggles speech recognition on/off.
    */
@@ -170,7 +178,7 @@ class VoiceUI {
       this.start();
     }
   }
-
+  
   /**
    * Makes the browser speak a given text.
    */
@@ -184,7 +192,7 @@ class VoiceUI {
     utterance.lang = lang;
     this.speechSynthesis.speak(utterance);
   }
-
+  
   /**
    * Registers a custom voice command.
    */
@@ -195,7 +203,7 @@ class VoiceUI {
     }
     this._commands[cleanText(phrase)] = callback;
   }
-
+  
   /**
    * Removes a previously registered voice command.
    */
@@ -207,23 +215,22 @@ class VoiceUI {
     }
     return false;
   }
-
-  // --- Getters for status ---
+  
   get isListening() {
     return this._state._isListening;
   }
-
+  
   get microphoneAllowed() {
     return this._state._microphoneAllowed;
   }
-
+  
   get isApiSupported() {
-    return VoiceUI.isApiSupported;
+    return JSVoice.isApiSupported; 
   }
-
+  
   get voiceFeedback() {
     return this._currentVoiceFeedback;
   }
 }
 
-export default VoiceUI;
+export default JSVoice; 

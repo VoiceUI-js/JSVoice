@@ -1,4 +1,4 @@
 // src/index.js
 
-import VoiceUI from './VoiceUI.js';
-export default VoiceUI;
+import JSVoice from './JSVoice.js';
+export default JSVoice;

@@ -1,5 +1,5 @@
 {
-  "name": "voice-ui",
+  "name": "jsvoice",
   "version": "0.1.0",
   "description": "A lightweight JavaScript library for adding voice command and synthesis capabilities to web applications using the Web Speech API.",
   "main": "dist/voice-ui.cjs.js",
