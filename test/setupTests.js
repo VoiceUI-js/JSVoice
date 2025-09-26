@@ -1,14 +1,28 @@
 // test/setupTests.js
 
 // --- MOCK CLASS AND OBJECT DEFINITIONS ---
-// (Keep the order from the previous successful step for these definitions)
 
 // Global array to hold instances of MockSpeechRecognition created by the tests
 const mockSpeechRecognitionInstances = [];
 
-class MockSpeechRecognitionEvent extends Event { /* ... same ... */ }
+// Mock MediaStream (Required for navigator.mediaDevices.getUserMedia mock)
+class MockMediaStream {
+  getTracks() {
+    return [];
+  }
+}
 
-class MockSpeechRecognition {
+// Mock Event class for _fireResult (To simulate the native Web Speech API event structure)
+class MockSpeechRecognitionEvent extends Event {
+  constructor(type, eventInitDict = {}) {
+    super(type, eventInitDict);
+    this.results = eventInitDict.results || [];
+    this.resultIndex = eventInitDict.resultIndex || 0;
+  }
+}
+
+// THIS CLASS WILL BE INSTANTIATED BY THE JEST MOCK
+class _ActualMockSpeechRecognitionClass {
   constructor() {
     this.continuous = false;
     this.interimResults = false;
@@ -17,72 +31,100 @@ class MockSpeechRecognition {
     this.onend = null;
     this.onresult = null;
     this.onerror = null;
-    this._isStarted = false;
+    this._isStarted = false; 
 
-    // Make start and stop methods Jest mocks directly on the instance
+    // CRITICAL: Ensure these are jest.fn() for call tracking
     this.start = jest.fn(() => {
-      if (this._isStarted) {
-        throw new DOMException('Already started', 'InvalidStateError');
-      }
       this._isStarted = true;
       if (this.onstart) this.onstart();
     });
+    
     this.stop = jest.fn(() => {
-      if (!this._isStarted) return;
+      this._isStarted = false;
+      if (this.onend) this.onend();
+    });
+    
+    this.abort = jest.fn(() => {
       this._isStarted = false;
       if (this.onend) this.onend();
     });
 
-    mockSpeechRecognitionInstances.push(this); // Track all instances
+    // --- TEST UTILITY METHODS (Accessed via recognitionInstance._fireResult) ---
+    this._fireResult = (transcript) => {
+      if (!this._isStarted) {
+        return; 
+      }
+      if (this.onresult) {
+        const event = new MockSpeechRecognitionEvent('result', {
+          results: [[{ transcript: transcript, confidence: 1.0 }]],
+          resultIndex: 0
+        });
+        this.onresult(event);
+      }
+      this._isStarted = false;
+      if (this.onend) this.onend();
+    };
+    
+    this._fireError = (errorType, message) => {
+        if (this.onerror) {
+            this.onerror({ error: errorType, message: message });
+        }
+    };
   }
-
-  // ... _fireResult, _fireError methods ...
-  _fireResult(transcript, isFinal = true) { /* ... same ... */ }
-  _fireError(errorType) { /* ... same ... */ }
 }
 
-class MockSpeechSynthesisUtterance { /* ... same ... */ }
+// --- MOCK API DEFINITIONS ---
 
+// 1. Mock the SpeechRecognition constructor
+const MockSpeechRecognition = jest.fn(() => {
+  const instance = new _ActualMockSpeechRecognitionClass();
+  mockSpeechRecognitionInstances.push(instance);
+  return instance;
+});
+
+// 2. Mock for SpeechSynthesis
 const mockSpeechSynthesis = {
   speak: jest.fn(),
   cancel: jest.fn(),
   getVoices: jest.fn(() => []),
-  speaking: false,
-  pending: false,
-  paused: false,
 };
 
+// 3. Mock for SpeechSynthesis Utterance (Fixes the undefined 'text' property in the test)
+const MockSpeechSynthesisUtterance = jest.fn(function(text) {
+    this.text = text; 
+    this.lang = 'en-US'; 
+    this.onend = null;
+    this.onerror = null;
+});
+
+// 4. Mock for MediaDevices (Microphone)
 const mockMediaDevices = {
-  getUserMedia: jest.fn(() =>
-    Promise.resolve({
-      getTracks: () => [{ stop: jest.fn() }]
-    })
-  )
+  getUserMedia: jest.fn(() => Promise.resolve(new MockMediaStream())),
 };
 
-global.DOMException = class DOMException extends Error { /* ... same ... */ };
 
-
-// --- ASSIGN MOCKS TO GLOBAL OBJECTS ---
+// --- GLOBAL BINDING ---
 
 Object.defineProperty(window, 'SpeechRecognition', {
   writable: true,
-  // The value is now the MockSpeechRecognition class itself.
-  // Jest will automatically treat a class assigned to a global as a mockable constructor.
   value: MockSpeechRecognition,
 });
+
 Object.defineProperty(window, 'webkitSpeechRecognition', {
   writable: true,
-  value: MockSpeechRecognition, // Both point to the same mock class
+  value: MockSpeechRecognition,
 });
+
 Object.defineProperty(window, 'SpeechSynthesisUtterance', {
   writable: true,
   value: MockSpeechSynthesisUtterance,
 });
+
 Object.defineProperty(window, 'speechSynthesis', {
   writable: true,
   value: mockSpeechSynthesis,
 });
+
 Object.defineProperty(navigator, 'mediaDevices', {
   writable: true,
   value: mockMediaDevices,
@@ -92,27 +134,25 @@ Object.defineProperty(navigator, 'mediaDevices', {
 // --- RESET MOCKS BEFORE EACH TEST ---
 
 beforeEach(() => {
-  // Clear mocks on the constructor and instances
-  MockSpeechRecognition.mockClear(); // Clear constructor calls
+  jest.clearAllMocks();
+
+  // Reset internal state for all tracked SpeechRecognition instances
   mockSpeechRecognitionInstances.forEach(instance => {
-    instance.start.mockClear(); // Clear instance method calls
-    instance.stop.mockClear();
-    instance._isStarted = false; // Reset internal state
-    // Clear event handlers if they were set directly on the instance outside of constructor
+    instance._isStarted = false;
     instance.onstart = null;
     instance.onend = null;
     instance.onresult = null;
     instance.onerror = null;
   });
-  // Clear the tracking array for instances
   mockSpeechRecognitionInstances.length = 0;
 
+  mockMediaDevices.getUserMedia.mockImplementation(() => Promise.resolve(new MockMediaStream()));
 
-  mockSpeechSynthesis.speak.mockClear();
-  mockMediaDevices.getUserMedia.mockClear();
   document.body.style.zoom = '1';
-});
+  document.body.innerHTML = '';
+  delete global.mockButtonClick; 
 
-// Make mockSpeechRecognitionInstances available for tests if needed, though
-// it's usually better to get instance via MockSpeechRecognition.mock.instances[0]
-// for the primary instance created by VoiceUI.
+  jest.spyOn(console, 'warn').mockImplementation(() => {});
+  jest.spyOn(console, 'error').mockImplementation(() => {});
+  jest.spyOn(console, 'log').mockImplementation(() => {});
+});

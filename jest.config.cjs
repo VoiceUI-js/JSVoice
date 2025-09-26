@@ -1,14 +1,21 @@
-// jest.config.js
+// jest.config.cjs
 module.exports = {
   testEnvironment: 'jest-environment-jsdom',
-  setupFilesAfterEnv: ['./test/setupTests.js'], // For common setup, like mocking Web Speech API
+  setupFilesAfterEnv: ['./test/setupTests.js'],
   transform: {
-    '^.+\\.jsx?$': 'babel-jest', // Use babel-jest for .js and .jsx files
+    '^.+\\.jsx?$': 'babel-jest',
   },
   moduleFileExtensions: ['js', 'json', 'jsx', 'node'],
-  // Add coverage if desired
   collectCoverage: true,
   coverageDirectory: 'coverage',
   coverageReporters: ['lcov', 'text', 'html'],
-  // Define global mocks if needed (see setupTests.js)
+  testMatch: [
+    '**/test/**/*.test.js',
+    '**/test/**/*.spec.js'
+  ],
+  verbose: true,
+  forceExit: true,
+  clearMocks: true,
+  resetMocks: true,
+  restoreMocks: true
 };
