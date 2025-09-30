@@ -2,9 +2,9 @@
 
 /**
  * Initializes the SpeechRecognition instance and sets up its event handlers.
- * @param {Object} options - VoiceUI options.
- * @param {Function} updateStatus - Status update function from VoiceUI instance.
- * @param {Function} callCallback - Callback function from VoiceUI instance.
+ * @param {Object} options - JSVoice options. // CHANGED: VoiceUI -> JSVoice
+ * @param {Function} updateStatus - Status update function from JSVoice instance. // CHANGED: VoiceUI -> JSVoice
+ * @param {Function} callCallback - Callback function from JSVoice instance. // CHANGED: VoiceUI -> JSVoice
  * @param {Function} processCommand - The function to call when a final result is received.
  * @param {Function} startRecognitionInternal - Internal function to restart recognition.
  * @param {Object} state - Object containing _isListening and _microphoneAllowed flags (passed by reference).
