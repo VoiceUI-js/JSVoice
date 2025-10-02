@@ -2,7 +2,7 @@
 
 /**
  * Helper to call callbacks safely.
- * @param {Object} options - The library options object.
+ * @param {import('../JSVoice').JSVoiceOptions} options - The JSVoice library options object.
  * @param {string} callbackName - Name of the callback in options.
  * @param {...any} args - Arguments to pass to the callback.
  */
@@ -13,59 +13,95 @@ export function callCallback(options, callbackName, ...args) {
 }
 
 /**
- * Cleans a string by removing common punctuation and converting to lowercase.
+ * Cleans a string by removing common punctuation, consolidating spaces, and converting to lowercase.
+ * This is crucial for consistent command matching.
  * @param {string} text
  * @returns {string} Cleaned text.
  */
 export function cleanText(text) {
-  return text.replace(/[.,!?"]+/g, '').trim().toLowerCase();
+  if (typeof text !== 'string') {
+    return '';
+  }
+  // IMPROVED: Added more whitespace characters and common symbols, including unicode whitespace
+  return text
+    .toLowerCase()
+    .replace(/[.,/#!$%^&*;:{}=\-_`~()\[\]<>+@?|\\]/g, '') // Remove a wider range of punctuation
+    .replace(/\s+/g, ' ') // Replace all whitespace (including newlines, tabs) with a single space
+    .trim(); // Trim leading/trailing whitespace
 }
 
 /**
- * Attempts to find an input (or textarea) element in the DOM based on various attributes.
- * @param {string} identifier The cleaned text to search for (e.g., "username", "email")
- * @returns {{success: boolean, element?: HTMLInputElement | HTMLTextAreaElement, reason?: string}} Result object.
+ * Helper to check if an element is a valid input type (input, textarea, select).
+ * @param {Element|null} element
+ * @returns {boolean}
  */
-export function findInputField(identifier) {
+function isValidInputField(element) {
+  if (!element) return false;
+  const tagName = element.tagName;
+  return tagName === 'INPUT' || tagName === 'TEXTAREA' || tagName === 'SELECT';
+}
+
+/**
+ * Attempts to find an input (or textarea or select) element in the DOM based on various attributes.
+ * Prioritizes explicit voice commands via data attributes.
+ *
+ * @param {string} rawIdentifier The original text spoken by the user to identify the field (e.g., "username", "email")
+ * @returns {{success: boolean, element?: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement, reason?: string}} Result object.
+ */
+export function findInputField(rawIdentifier) {
+  const identifier = cleanText(rawIdentifier); // Clean identifier once
+
+  // Query all potential input fields (inputs, textareas, selects)
+  const allPotentialFields = document.querySelectorAll(
+    'input:not([type="hidden"]):not([type="radio"]):not([type="checkbox"]), textarea, select'
+  );
+
   let element = null;
 
-  // 1. Exact ID match (cleaned)
-  const potentialByIdCleaned = document.getElementById(cleanText(identifier));
-  if (potentialByIdCleaned && (potentialByIdCleaned.tagName === 'INPUT' || potentialByIdCleaned.tagName === 'TEXTAREA')) {
-    return { success: true, element: potentialByIdCleaned };
-  }
+  // --- Search Precedence (from most specific to least) ---
 
-  // 2. Placeholder text
-  element = document.querySelector(`input[placeholder*="${identifier}" i], textarea[placeholder*="${identifier}" i]`);
-  if (element) return { success: true, element };
-
-  // 3. Aria-label
-  element = document.querySelector(`input[aria-label*="${identifier}" i], textarea[aria-label*="${identifier}" i]`);
-  if (element) return { success: true, element };
-
-  // 4. Associated Label text
-  const labels = document.querySelectorAll('label');
-  for (const label of labels) {
-    const labelText = cleanText(label.textContent || '');
-    if (labelText.includes(identifier)) {
-      if (label.htmlFor) {
-        element = document.getElementById(label.htmlFor);
-        if (element && (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA')) return { success: true, element };
-      }
-      element = label.querySelector('input, textarea'); // Check for nested input/textarea
-      if (element) return { success: true, element };
+  // 1. data-voice-command-fill attribute (most explicit voice control)
+  for (const field of allPotentialFields) {
+    const dataCommand = cleanText(field.getAttribute('data-voice-command-fill') || '');
+    if (dataCommand === identifier) { // Exact match for explicit command
+      return { success: true, element: field };
     }
   }
 
-  // 5. Name attribute
-  element = document.querySelector(`input[name*="${identifier}" i], textarea[name*="${identifier}" i]`);
-  if (element) return { success: true, element };
-
-  // 6. Specific email input types
-  if (identifier.includes("email") || identifier.includes("e-mail")) {
-    element = document.querySelector('input[type="email" i], input[inputmode="email" i], input[id*="email" i], input[name*="email" i]');
-    if (element) return { success: true, element };
+  // 2. Associated Label text (exact match after cleaning)
+  const labels = document.querySelectorAll('label');
+  for (const label of labels) {
+    const labelText = cleanText(label.textContent || '');
+    if (labelText === identifier) { // Exact label match
+      if (label.htmlFor) {
+        element = document.getElementById(label.htmlFor);
+        if (isValidInputField(element)) return { success: true, element };
+      }
+      // Check for nested input/textarea/select within the label
+      element = label.querySelector('input:not([type="hidden"]):not([type="radio"]):not([type="checkbox"]), textarea, select');
+      if (isValidInputField(element)) return { success: true, element };
+    }
+  }
+  
+  // 3. ID attribute (exact match after cleaning, and if it's a valid field)
+  for (const field of allPotentialFields) {
+      const fieldId = cleanText(field.id || '');
+      if (fieldId === identifier) {
+          return { success: true, element: field };
+      }
   }
 
+  // 4. Placeholder text, Aria-label, Name attribute (contains, case-insensitive after cleaning)
+  for (const field of allPotentialFields) {
+    const placeholder = cleanText(field.placeholder || '');
+    const ariaLabel = cleanText(field.getAttribute('aria-label') || '');
+    const name = cleanText(field.name || '');
+
+    if (placeholder.includes(identifier) || ariaLabel.includes(identifier) || name.includes(identifier)) {
+      return { success: true, element: field };
+    }
+  }
+
+  // Fallback: No element found
   return { success: false, reason: "field not found" };
 }

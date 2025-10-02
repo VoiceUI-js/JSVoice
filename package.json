@@ -17,10 +17,14 @@
   "scripts": {
     "build": "rollup -c",
     "dev": "rollup -c -w",
-    "test": "jest",
+  "test": "echo \"Error: no test specified\" && exit 1",
     "lint": "eslint src/",
     "prepare": "npm run build"
   },
+  "files": [
+  "dist/",       
+  "src/modules/"
+],
   "keywords": [
     "voice",
     "ui",
