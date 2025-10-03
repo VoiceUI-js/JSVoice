@@ -316,6 +316,7 @@ declare module 'jsvoice' {
 5. Open a focused PR with a clear description
 
 Labels: `bug`, `enhancement`, `docs`, `good first issue`.
+[![Hacktoberfest](https://img.shields.io/badge/Hacktoberfest-2025-blueviolet?style=flat&logo=hackster)](https://hacktoberfest.com/)
 
 ---
 
