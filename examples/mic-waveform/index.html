@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <title>JSVoice Demo — Waveform Visual</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        body {
+            font-family: ui-sans-serif, system-ui;
+            padding: 24px;
+            background: #f7f7fb;
+        }
+
+        button {
+            font-size: 16px;
+            padding: 8px 12px;
+        }
+
+        #status {
+            margin-top: 12px;
+        }
+
+        #wave {
+            height: 40px;
+            display: flex;
+            gap: 4px;
+            align-items: flex-end;
+            margin-top: 24px;
+            transition: opacity 0.3s;
+            opacity: 0.4;
+        }
+
+        .bar {
+            width: 8px;
+            height: 10px;
+            background: #09f;
+            border-radius: 4px;
+            transition: height 0.15s;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>JSVoice — Waveform Visual Demo</h1>
+    <button id="micBtn">🎤</button>
+    <p id="status">Click Mic to toggle listening.</p>
+    <div id="wave"></div>
+    <!-- You can load JSVoice here if you want to integrate; for now, this is a visual demo only -->
+    <script src="./demo.js"></script>
+</body>
+
+</html>
