@@ -155,7 +155,7 @@ export default [
 ];
 ```
 
-### 3) Add tests (preferred)
+### 3) Add tests (optional)
 
 Create a test like `tests/actions/ToggleDarkModeAction.test.js`:
 
@@ -323,5 +323,6 @@ We welcome Hacktoberfest contributions! Look for issues labeled `hacktoberfest`,
 ---
 
 Thanks for helping improve **JSVoice** 💜
+
 
 
