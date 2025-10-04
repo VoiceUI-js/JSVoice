@@ -5,6 +5,8 @@ import { handleZoom } from './actions/ZoomAction.js';
 import { handleFillInput } from './actions/FillInputAction.js';
 import { handleClick } from './actions/ClickAction.js';
 import { handleReadContent } from './actions/ReadContentAction.js'; // NEW import
+import { handleDarkMode } from './actions/ToggleDarkModeAction.js';
+
 
 /**
  * Attempts to match and execute a built-in DOM action (Scroll, Zoom, Click, Fill Input, Read Content).
@@ -25,6 +27,7 @@ export function handleBuiltInActions(rawTranscript, cleanedTranscript, updateSta
   if (handleZoom(cleanedTranscript, updateStatus, callCallback)) return true;
   if (handleFillInput(rawTranscript, updateStatus, callCallback)) return true;
   if (handleClick(rawTranscript, updateStatus, callCallback)) return true;
+  if (handleDarkMode(cleanedTranscript, updateStatus, callCallback)) return true;
 
   return false;
 }
