@@ -8,6 +8,7 @@ import { handleReadContent } from './actions/ReadContentAction.js'; // NEW impor
 
 /**
  * Attempts to match and execute a built-in DOM action (Scroll, Zoom, Click, Fill Input, Read Content).
+ * Adding 2 new folders
  *
  * @param {string} rawTranscript - The original recognized speech.
  * @param {string} cleanedTranscript - The processed, cleaned speech.
