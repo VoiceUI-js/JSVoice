@@ -1,6 +1,7 @@
 const micBtn = document.getElementById('micBtn');
 const wave = document.getElementById('wave');
 const status = document.getElementById('status');
+const micIndicator = document.getElementById('micIndicator'); // ADDED
 
 const barCount = 12;
 let isListening = false;
@@ -37,11 +38,15 @@ function setListening(listen) {
     wave.style.opacity = '1';
     status.textContent = 'Listening...';
     animFrame = requestAnimationFrame(animateWave);
+    micIndicator.classList.remove('idle');
+    micIndicator.classList.add('listening');
   } else {
     wave.style.opacity = '0.4';
     status.textContent = 'Mic is idle. Click to listen.';
     cancelAnimationFrame(animFrame);
     animateWave(); // reset bars
+    micIndicator.classList.remove('listening');
+    micIndicator.classList.add('idle');
   }
 }
 
