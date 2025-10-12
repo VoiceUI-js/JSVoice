@@ -1,29 +1,34 @@
-import Action from '../../src/modules/actions/ToggleDarkModeAction.js';
-
-const fakeCtx = () => ({
-  win: global.window,
-  doc: global.document,
-  onStatusChange: jest.fn(),
-  onActionPerformed: jest.fn(),
-});
+import { handleDarkMode } from '../src/modules/actions/ToggleDarkModeAction.js';
 
 describe('ToggleDarkModeAction', () => {
   test('matches phrases', () => {
-    expect(Action.test('toggle dark mode')).toBe(true);
-    expect(Action.test('please switch theme')).toBe(true);
-    expect(Action.test('zoom in')).toBe(false);
+    const updateStatus = jest.fn();
+    const callCallback = jest.fn();
+    
+    // Test toggle dark mode
+    expect(handleDarkMode('toggle dark mode', updateStatus, callCallback)).toBe(true);
+    expect(callCallback).toHaveBeenCalledWith('onActionPerformed', 'toggleDarkMode', 'dark');
+    
+    // Test switch theme
+    callCallback.mockClear();
+    expect(handleDarkMode('please switch theme', updateStatus, callCallback)).toBe(true);
+    expect(callCallback).toHaveBeenCalledWith('onActionPerformed', 'toggleDarkMode', expect.any(String));
+    
+    // Test non-matching phrase
+    callCallback.mockClear();
+    expect(handleDarkMode('zoom in', updateStatus, callCallback)).toBe(false);
+    expect(callCallback).not.toHaveBeenCalled();
   });
 
   test('toggles dataset theme', () => {
-    const ctx = fakeCtx();
+    const updateStatus = jest.fn();
+    const callCallback = jest.fn();
+    
     document.documentElement.dataset.theme = 'light';
-    const ok = Action.run('toggle dark mode', ctx);
+    const result = handleDarkMode('toggle dark mode', updateStatus, callCallback);
 
-    expect(ok).toBe(true);
-    expect(document.documentElement.dataset.theme).toMatch(/dark|light/);
-    expect(ctx.onActionPerformed).toHaveBeenCalledWith(
-      'toggleDarkMode',
-      expect.any(Object)
-    );
+    expect(result).toBe(true);
+    expect(document.documentElement.dataset.theme).toBe('dark');
+    expect(callCallback).toHaveBeenCalledWith('onActionPerformed', 'toggleDarkMode', 'dark');
   });
 });
