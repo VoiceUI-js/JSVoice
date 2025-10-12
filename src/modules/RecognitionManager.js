@@ -162,7 +162,7 @@ export function initRecognition(options, updateStatus, callCallback, handleSpeec
  * @param {Object} state - Object containing _microphoneAllowed flag.
  * @returns {Promise<void>}
  */
-export async function checkMicrophonePermission(updateStatus, callCallback, state) {
+export async function checkMicrophonePermission(updateStatus, callCallback, state, opts = {}) {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
     state._microphoneAllowed = false;
     updateStatus("Error: MediaDevices API not supported, cannot check microphone.");
@@ -171,8 +171,15 @@ export async function checkMicrophonePermission(updateStatus, callCallback, stat
 
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    stream.getTracks().forEach(track => track.stop()); // Stop tracks immediately after acquiring stream
+    // If caller requests the live stream (e.g., for analyser), return it and DO NOT stop tracks
+    if (opts.returnStream) {
+      state._microphoneAllowed = true;
+      callCallback('onMicrophonePermissionGranted');
+      return stream;
+    }
 
+    // Default behavior: stop tracks immediately (permission-check only)
+    stream.getTracks().forEach(track => track.stop());
     state._microphoneAllowed = true;
     callCallback('onMicrophonePermissionGranted');
   } catch (error) {

@@ -207,6 +207,14 @@ class JSVoice {
     if (this._wakeWordCommandTimer) {
       clearTimeout(this._wakeWordCommandTimer);
       this._wakeWordCommandTimer = null;
+
+    // Real-time amplitude / analyser support
+    this._audioContext = null;
+    this._analyser = null;
+    this._micStream = null; // MediaStream used for analyser (kept separate from recognition)
+    this._amplitudeCallback = null;
+    this._amplitudeRafId = null;
+    this._amplitudeOptions = null;
     }
     if (this._state._isListening) {
         this._updateStatus(`Reverted to wake word mode. Waiting for "${this.options.wakeWord}"...`);
@@ -405,7 +413,7 @@ class JSVoice {
     }
   }
 
-  /**
+  /**f
    * Removes a previously registered pattern voice command.
    * @param {string} pattern - The pattern of the command to remove.
    * @returns {boolean} True if the command was removed, false otherwise.
@@ -439,6 +447,157 @@ class JSVoice {
 
   get isAwaitingCommand() {
     return this._state._awaitingCommand;
+  }
+
+  /**
+   * Starts real-time amplitude monitoring. This will request microphone access (if not already granted)
+   * and call `onAmplitude` callback regularly with a value in range [0, 1].
+   * @param {Function} onAmplitude - function(amplitude: number) called with current RMS amplitude
+   * @param {Object} [opts] - optional settings: { fftSize: number (default 2048), smoothingTimeConstant: number (0-1, default 0.3) }
+   * @returns {Promise<boolean>} resolves true if analyser started, false otherwise
+   */
+  /**
+   * startAmplitude callback can receive either a number (RMS) or an array (bars mode).
+   * opts.mode: 'rms' (default) | 'bars' (frequency bars)
+   * opts.barCount: number of bars when mode === 'bars' (default 8)
+   */
+  async startAmplitude(onAmplitude, opts = {}) {
+    if (typeof onAmplitude !== 'function') {
+      console.error('[JSVoice] startAmplitude requires a callback function');
+      return false;
+    }
+
+    this._amplitudeCallback = onAmplitude;
+    this._amplitudeOptions = {
+      fftSize: opts.fftSize || 2048,
+      smoothingTimeConstant: typeof opts.smoothingTimeConstant === 'number' ? opts.smoothingTimeConstant : 0.3,
+      mode: opts.mode || 'rms',
+      barCount: opts.barCount || 8,
+    };
+
+    // Ensure microphone permission check has run
+    try {
+      await this._initialMicrophoneCheckPromise;
+    } catch (e) {
+      // permission check might throw when denied
+    }
+
+    if (!this._state._microphoneAllowed || !this._micStream) {
+      try {
+        // Reuse RecognitionManager to request a live stream without stopping tracks
+        const stream = await checkMicrophonePermission(this._updateStatus.bind(this), this._callCallback.bind(this), this._state, { returnStream: true });
+        this._micStream = stream;
+      } catch (err) {
+        this._callCallback('onMicrophonePermissionDenied', err);
+        this._updateStatus('Error: Microphone access denied. Cannot start amplitude analyser.');
+        return false;
+      }
+    }
+
+    try {
+      // Create AudioContext and analyser
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) {
+        console.error('[JSVoice] Web Audio API not supported in this browser.');
+        return false;
+      }
+
+      this._audioContext = this._audioContext || new AudioContext();
+      // If context is suspended (autoplay policy), try to resume
+      if (this._audioContext.state === 'suspended') {
+        try { await this._audioContext.resume(); } catch(e) { /* continue */ }
+      }
+
+      this._analyser = this._audioContext.createAnalyser();
+      this._analyser.fftSize = this._amplitudeOptions.fftSize;
+      this._analyser.smoothingTimeConstant = this._amplitudeOptions.smoothingTimeConstant;
+
+      const source = this._audioContext.createMediaStreamSource(this._micStream);
+      source.connect(this._analyser);
+
+      if (this._amplitudeOptions.mode === 'bars') {
+        // Use frequency-domain data to make multiple bars
+        const freqSize = this._analyser.frequencyBinCount;
+        const freqData = new Uint8Array(freqSize);
+        const sampleBars = () => {
+          if (!this._analyser || !this._amplitudeCallback) return;
+          this._analyser.getByteFrequencyData(freqData);
+          // Group frequency bins into barCount buckets
+          const bars = new Array(this._amplitudeOptions.barCount).fill(0);
+          const binsPerBar = Math.floor(freqSize / bars.length) || 1;
+          for (let i = 0; i < bars.length; i++) {
+            let sum = 0;
+            const start = i * binsPerBar;
+            const end = Math.min(start + binsPerBar, freqSize);
+            for (let j = start; j < end; j++) sum += freqData[j];
+            const avg = sum / (end - start || 1);
+            // Normalize 0..255 to 0..1
+            bars[i] = Math.min(1, Math.max(0, avg / 255));
+          }
+          try { this._amplitudeCallback(bars); } catch (e) { console.error('[JSVoice] amplitude callback error', e); }
+          this._amplitudeRafId = window.requestAnimationFrame(sampleBars);
+        };
+        if (this._amplitudeRafId) cancelAnimationFrame(this._amplitudeRafId);
+        this._amplitudeRafId = window.requestAnimationFrame(sampleBars);
+      } else {
+        const bufferLength = this._analyser.fftSize;
+        const data = new Float32Array(bufferLength);
+        const sample = () => {
+          if (!this._analyser || !this._amplitudeCallback) return;
+          this._analyser.getFloatTimeDomainData(data);
+          // Compute RMS
+          let sum = 0;
+          for (let i = 0; i < data.length; i++) {
+            const v = data[i];
+            sum += v * v;
+          }
+          const rms = Math.sqrt(sum / data.length);
+          // Clamp and normalize (rms is typically 0..1)
+          const amplitude = Math.min(1, Math.max(0, rms));
+          try {
+            this._amplitudeCallback(amplitude);
+          } catch (e) {
+            console.error('[JSVoice] amplitude callback error', e);
+          }
+          this._amplitudeRafId = window.requestAnimationFrame(sample);
+        };
+        if (this._amplitudeRafId) cancelAnimationFrame(this._amplitudeRafId);
+        this._amplitudeRafId = window.requestAnimationFrame(sample);
+      }
+
+  // (per-branch RAF already started above)
+
+      this._updateStatus('Amplitude monitoring started.');
+      return true;
+    } catch (e) {
+      console.error('[JSVoice] startAmplitude error:', e);
+      this._callCallback('onError', e);
+      return false;
+    }
+  }
+
+  /**
+   * Stops real-time amplitude monitoring and frees resources.
+   */
+  stopAmplitude() {
+    if (this._amplitudeRafId) {
+      cancelAnimationFrame(this._amplitudeRafId);
+      this._amplitudeRafId = null;
+    }
+    if (this._analyser) {
+      try { this._analyser.disconnect(); } catch (e) {}
+      this._analyser = null;
+    }
+    if (this._audioContext) {
+      try { this._audioContext.close(); } catch (e) {}
+      this._audioContext = null;
+    }
+    if (this._micStream) {
+      try { this._micStream.getTracks().forEach(t => t.stop()); } catch (e) {}
+      this._micStream = null;
+    }
+    this._amplitudeCallback = null;
+    this._updateStatus('Amplitude monitoring stopped.');
   }
 }
 
