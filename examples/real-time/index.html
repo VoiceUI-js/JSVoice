@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>JSVoice Test</title>
+  <link rel="stylesheet" href="visualiser.css" />
+</head>
+<body>
+  <div class="container">
+    <h2>🎤 JSVoice Real Time Audio Visualizer</h2>
+    <div class="controls">
+      <button id="start">Start Listening</button>
+      <button id="stop" disabled>Stop Listening</button>
+    </div>
+    <p id="status">Click "Start Listening" to begin</p>
+    <!-- The amplitude bars ONLY: -->
+    <div id="bars"></div>
+  </div>
+
+  <script type="module">
+    import JSVoice from '../../src/JSVoice.js';
+
+    const btnStart = document.getElementById('start');
+    const btnStop = document.getElementById('stop');
+    const status = document.getElementById('status');
+    const barsContainer = document.getElementById('bars');
+
+    let jsVoice;
+    let isListening = false;
+
+    btnStart.onclick = async () => {
+      try {
+        btnStart.disabled = true;
+        status.textContent = 'Requesting microphone access...';
+
+        jsVoice = new JSVoice();
+        await jsVoice.start();
+
+        isListening = true;
+        btnStart.style.display = 'none';
+        btnStop.disabled = false;
+        status.textContent = '🎤 Listening - Speak into your microphone';
+
+        // Your original bar configuration:
+        const BAR_COUNT = 8;
+        const BAR_WIDTHS = [3, 3, 3, 3, 3, 3, 3, 3];
+        const BAR_MAX_HEIGHTS = [32, 40, 48, 56, 56, 48, 40, 32];
+
+        barsContainer.innerHTML = '';
+        barsContainer.style.display = 'flex';
+        barsContainer.style.alignItems = 'center';
+        barsContainer.style.justifyContent = 'center';
+        barsContainer.style.gap = '4px';
+        barsContainer.style.minHeight = '60px';
+
+        for (let i = 0; i < BAR_COUNT; i++) {
+          const bar = document.createElement('div');
+          bar.className = 'vbar';
+          bar.style.width = BAR_WIDTHS[i] + 'px';
+          bar.style.height = '8px';
+          bar.style.minHeight = '8px';
+          barsContainer.appendChild(bar);
+        }
+
+        const prevHeights = Array(BAR_COUNT).fill(8);
+        const velocities = Array(BAR_COUNT).fill(0);
+
+        jsVoice.startAmplitude((bars) => {
+          if (!Array.isArray(bars) || !isListening) return;
+
+          const vbars = Array.from(document.querySelectorAll('#bars .vbar'));
+
+          const centerStart = Math.floor(BAR_COUNT * 0.3);
+          const centerEnd = Math.floor(BAR_COUNT * 0.7);
+          let envelope = 0;
+          for (let k = centerStart; k < centerEnd; k++) {
+            envelope = Math.max(envelope, bars[Math.min(bars.length - 1, k)] || 0);
+          }
+
+          jsVoice._lastEnvelope = jsVoice._lastEnvelope || 0;
+          envelope = jsVoice._lastEnvelope * 0.75 + envelope * 0.25;
+          jsVoice._lastEnvelope = envelope;
+
+          for (let i = 0; i < BAR_COUNT; i++) {
+            const localFreq = bars[Math.floor((i / BAR_COUNT) * bars.length)] || 0;
+            const envelopeWeight = 0.6 + (0.4 * Math.sin((i / BAR_COUNT) * Math.PI));
+            const combined = Math.min(1, envelope * envelopeWeight + localFreq * 0.4);
+            const targetHeight = Math.max(8, Math.round(combined * BAR_MAX_HEIGHTS[i]));
+
+            const prev = prevHeights[i];
+            const velocity = velocities[i];
+            const force = (targetHeight - prev) * 0.3;
+            const newVelocity = velocity * 0.85 + force;
+            const newHeight = Math.max(8, Math.round(prev + newVelocity));
+
+            prevHeights[i] = newHeight;
+            velocities[i] = newVelocity;
+
+            const bar = vbars[i];
+            if (!bar) continue;
+            bar.style.height = newHeight + 'px';
+            bar.style.opacity = (0.7 + Math.min(1, envelope) * 0.3).toString();
+            const centerDistance = Math.abs(i - (BAR_COUNT / 2));
+            const scaleEffect = 1 + (envelope * 0.05 * (1 - centerDistance / (BAR_COUNT / 2)));
+            bar.style.transform = `scaleY(${scaleEffect})`;
+          }
+        }, { mode: 'bars', barCount: BAR_COUNT });
+
+      } catch (err) {
+        console.error('Microphone access error:', err);
+        status.textContent = '❌ Microphone access denied or unavailable';
+        btnStart.disabled = false;
+        resetUI();
+      }
+    };
+
+    btnStop.onclick = () => {
+      if (jsVoice) {
+        jsVoice.stop();
+        jsVoice.stopAmplitude();
+      }
+      isListening = false;
+      status.textContent = '⏹️ Stopped listening';
+      resetUI();
+    };
+
+    function resetUI() {
+      btnStart.style.display = 'inline-block';
+      btnStart.disabled = false;
+      btnStop.disabled = true;
+      setTimeout(() => {
+        barsContainer.innerHTML = '';
+        status.textContent = 'Click "Start Listening" to begin';
+      }, 1000);
+    }
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden && isListening) {
+        btnStop.click();
+      }
+    });
+  </script>
+</body>
+</html>
