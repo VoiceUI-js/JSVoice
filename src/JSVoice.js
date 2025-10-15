@@ -7,10 +7,8 @@ import { processCommand } from './modules/CommandProcessor.js';
  * A JavaScript library for integrating voice commands and speech synthesis into web applications.
  */
 class JSVoice {
-  static _isApiSupported = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
-  
   static get isApiSupported() {
-    return JSVoice._isApiSupported;
+    return !!(window.SpeechRecognition || window.webkitSpeechRecognition);
   }
 
   /**
@@ -42,8 +40,10 @@ class JSVoice {
    */
   constructor(options = {}) {
     if (!JSVoice.isApiSupported) {
-      console.warn("[JSVoice] Web Speech API not supported by this browser.");
+      const error = new Error("Web Speech API not supported by this browser. Please use Chrome or Edge.");
+      console.warn("[JSVoice]", error.message);
       this._callCallback('onStatusChange', "Voice commands not supported by your browser. Try Chrome or Edge.");
+      this._callCallback('onError', error);
       return;
     }
 
@@ -301,9 +301,17 @@ class JSVoice {
    * @param {string} [lang] - The language for synthesis (defaults to options.lang).
    */
   speak(text, lang = this.options.lang) {
+    if (!text || typeof text !== 'string') {
+      const error = new Error("Speech text must be a non-empty string.");
+      console.error("[JSVoice]", error.message);
+      this._callCallback('onError', error);
+      return;
+    }
+
     if (!this.speechSynthesis || !window.SpeechSynthesisUtterance) {
-      console.warn("[JSVoice] SpeechSynthesis not supported by this browser.");
-      this._callCallback('onError', new Error("SpeechSynthesis not supported."));
+      const error = new Error("SpeechSynthesis not supported by this browser.");
+      console.warn("[JSVoice]", error.message);
+      this._callCallback('onError', error);
       return;
     }
 
@@ -358,10 +366,20 @@ class JSVoice {
    * @param {Function} callback - The function to execute when the phrase is recognized. Arguments: (rawTranscript: string, cleanedTranscript: string, jsVoiceSpeakMethod: Function)
    */
   addCommand(phrase, callback) {
-    if (typeof phrase !== 'string' || typeof callback !== 'function') {
-      console.error("[JSVoice] addCommand: Invalid phrase or callback.");
+    if (typeof phrase !== 'string' || phrase.trim() === '') {
+      const error = new Error("Command phrase must be a non-empty string.");
+      console.error("[JSVoice] addCommand:", error.message);
+      this._callCallback('onError', error);
       return;
     }
+    
+    if (typeof callback !== 'function') {
+      const error = new Error("Command callback must be a function.");
+      console.error("[JSVoice] addCommand:", error.message);
+      this._callCallback('onError', error);
+      return;
+    }
+    
     const cleanedPhrase = cleanText(phrase);
     if (this._commands.hasOwnProperty(cleanedPhrase)) {
         console.warn(`[JSVoice] Overwriting existing exact command: "${phrase}"`);
@@ -391,10 +409,20 @@ class JSVoice {
    * @param {Function} callback - The function to execute. Receives an object of extracted arguments, raw/cleaned transcripts, and the speak method.
    */
   addPatternCommand(pattern, callback) {
-    if (typeof pattern !== 'string' || typeof callback !== 'function') {
-      console.error("[JSVoice] addPatternCommand: Invalid pattern or callback.");
+    if (typeof pattern !== 'string' || pattern.trim() === '') {
+      const error = new Error("Pattern must be a non-empty string.");
+      console.error("[JSVoice] addPatternCommand:", error.message);
+      this._callCallback('onError', error);
       return;
     }
+    
+    if (typeof callback !== 'function') {
+      const error = new Error("Pattern callback must be a function.");
+      console.error("[JSVoice] addPatternCommand:", error.message);
+      this._callCallback('onError', error);
+      return;
+    }
+    
     const cleanedPattern = cleanText(pattern);
     const existingIndex = this._patternCommands.findIndex(cmd => cmd.cleanedPattern === cleanedPattern);
     if (existingIndex > -1) {
@@ -439,6 +467,44 @@ class JSVoice {
 
   get isAwaitingCommand() {
     return this._state._awaitingCommand;
+  }
+
+  /**
+   * Updates a specific option and applies changes if needed.
+   * @param {string} key - The option key to update.
+   * @param {any} value - The new value for the option.
+   */
+  setOption(key, value) {
+    if (!key || typeof key !== 'string') {
+      const error = new Error("Option key must be a non-empty string.");
+      console.error("[JSVoice] setOption:", error.message);
+      this._callCallback('onError', error);
+      return;
+    }
+    
+    if (key in this.options) {
+      this.options[key] = value;
+      
+      // Apply changes for options that affect recognition
+      if (this.recognition && (key === 'continuous' || key === 'interimResults' || key === 'lang')) {
+        this.recognition.continuous = this.options.continuous;
+        this.recognition.interimResults = this.options.interimResults;
+        this.recognition.lang = this.options.lang;
+      }
+      
+      // Handle wake word changes
+      if (key === 'wakeWord') {
+        this.options.wakeWord = value ? cleanText(value) : null;
+        this._state._wakeWordModeActive = !!this.options.wakeWord;
+        if (this.options.wakeWord) {
+          this.options.continuous = true; // Force continuous when wake word is set
+        }
+      }
+    } else {
+      const error = new Error(`Unknown option: ${key}`);
+      console.warn("[JSVoice] setOption:", error.message);
+      this._callCallback('onError', error);
+    }
   }
 }
 

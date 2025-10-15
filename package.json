@@ -6,18 +6,22 @@
   "module": "dist/voice-ui.esm.js",
   "unpkg": "dist/voice-ui.umd.min.js",
   "browser": "dist/voice-ui.umd.js",
+  "types": "dist/index.d.ts",
   "type": "module",
   "exports": {
     ".": {
       "import": "./dist/voice-ui.esm.js",
       "require": "./dist/voice-ui.cjs.js",
-      "browser": "./dist/voice-ui.umd.js"
+      "browser": "./dist/voice-ui.umd.js",
+      "types": "./dist/index.d.ts"
     }
   },
   "scripts": {
     "build": "rollup -c",
     "dev": "rollup -c -w",
-  "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
     "lint": "eslint src/",
     "prepare": "npm run build"
   },
@@ -35,7 +39,7 @@
     "javascript",
     "accessibility"
   ],
-  "author": "Your Name <your.email@example.com>",
+  "author": "JSVoice Contributors",
   "license": "MIT",
   "devDependencies": {
     "@babel/core": "^7.23.9",
