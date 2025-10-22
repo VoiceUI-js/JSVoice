@@ -7,10 +7,8 @@ import { processCommand } from './modules/CommandProcessor.js';
  * A JavaScript library for integrating voice commands and speech synthesis into web applications.
  */
 class JSVoice {
-  static _isApiSupported = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
-  
   static get isApiSupported() {
-    return JSVoice._isApiSupported;
+    return !!(window.SpeechRecognition || window.webkitSpeechRecognition);
   }
 
   /**
@@ -42,8 +40,10 @@ class JSVoice {
    */
   constructor(options = {}) {
     if (!JSVoice.isApiSupported) {
-      console.warn("[JSVoice] Web Speech API not supported by this browser.");
+      const error = new Error("Web Speech API not supported by this browser. Please use Chrome or Edge.");
+      console.warn("[JSVoice]", error.message);
       this._callCallback('onStatusChange', "Voice commands not supported by your browser. Try Chrome or Edge.");
+      this._callCallback('onError', error);
       return;
     }
 
@@ -309,9 +309,17 @@ class JSVoice {
    * @param {string} [lang] - The language for synthesis (defaults to options.lang).
    */
   speak(text, lang = this.options.lang) {
+    if (!text || typeof text !== 'string') {
+      const error = new Error("Speech text must be a non-empty string.");
+      console.error("[JSVoice]", error.message);
+      this._callCallback('onError', error);
+      return;
+    }
+
     if (!this.speechSynthesis || !window.SpeechSynthesisUtterance) {
-      console.warn("[JSVoice] SpeechSynthesis not supported by this browser.");
-      this._callCallback('onError', new Error("SpeechSynthesis not supported."));
+      const error = new Error("SpeechSynthesis not supported by this browser.");
+      console.warn("[JSVoice]", error.message);
+      this._callCallback('onError', error);
       return;
     }
 
@@ -366,10 +374,20 @@ class JSVoice {
    * @param {Function} callback - The function to execute when the phrase is recognized. Arguments: (rawTranscript: string, cleanedTranscript: string, jsVoiceSpeakMethod: Function)
    */
   addCommand(phrase, callback) {
-    if (typeof phrase !== 'string' || typeof callback !== 'function') {
-      console.error("[JSVoice] addCommand: Invalid phrase or callback.");
+    if (typeof phrase !== 'string' || phrase.trim() === '') {
+      const error = new Error("Command phrase must be a non-empty string.");
+      console.error("[JSVoice] addCommand:", error.message);
+      this._callCallback('onError', error);
       return;
     }
+    
+    if (typeof callback !== 'function') {
+      const error = new Error("Command callback must be a function.");
+      console.error("[JSVoice] addCommand:", error.message);
+      this._callCallback('onError', error);
+      return;
+    }
+    
     const cleanedPhrase = cleanText(phrase);
     if (this._commands.hasOwnProperty(cleanedPhrase)) {
         console.warn(`[JSVoice] Overwriting existing exact command: "${phrase}"`);
@@ -399,10 +417,20 @@ class JSVoice {
    * @param {Function} callback - The function to execute. Receives an object of extracted arguments, raw/cleaned transcripts, and the speak method.
    */
   addPatternCommand(pattern, callback) {
-    if (typeof pattern !== 'string' || typeof callback !== 'function') {
-      console.error("[JSVoice] addPatternCommand: Invalid pattern or callback.");
+    if (typeof pattern !== 'string' || pattern.trim() === '') {
+      const error = new Error("Pattern must be a non-empty string.");
+      console.error("[JSVoice] addPatternCommand:", error.message);
+      this._callCallback('onError', error);
       return;
     }
+    
+    if (typeof callback !== 'function') {
+      const error = new Error("Pattern callback must be a function.");
+      console.error("[JSVoice] addPatternCommand:", error.message);
+      this._callCallback('onError', error);
+      return;
+    }
+    
     const cleanedPattern = cleanText(pattern);
     const existingIndex = this._patternCommands.findIndex(cmd => cmd.cleanedPattern === cleanedPattern);
     if (existingIndex > -1) {
@@ -450,154 +478,41 @@ class JSVoice {
   }
 
   /**
-   * Starts real-time amplitude monitoring. This will request microphone access (if not already granted)
-   * and call `onAmplitude` callback regularly with a value in range [0, 1].
-   * @param {Function} onAmplitude - function(amplitude: number) called with current RMS amplitude
-   * @param {Object} [opts] - optional settings: { fftSize: number (default 2048), smoothingTimeConstant: number (0-1, default 0.3) }
-   * @returns {Promise<boolean>} resolves true if analyser started, false otherwise
+   * Updates a specific option and applies changes if needed.
+   * @param {string} key - The option key to update.
+   * @param {any} value - The new value for the option.
    */
-  /**
-   * startAmplitude callback can receive either a number (RMS) or an array (bars mode).
-   * opts.mode: 'rms' (default) | 'bars' (frequency bars)
-   * opts.barCount: number of bars when mode === 'bars' (default 8)
-   */
-  async startAmplitude(onAmplitude, opts = {}) {
-    if (typeof onAmplitude !== 'function') {
-      console.error('[JSVoice] startAmplitude requires a callback function');
-      return false;
+  setOption(key, value) {
+    if (!key || typeof key !== 'string') {
+      const error = new Error("Option key must be a non-empty string.");
+      console.error("[JSVoice] setOption:", error.message);
+      this._callCallback('onError', error);
+      return;
     }
-
-    this._amplitudeCallback = onAmplitude;
-    this._amplitudeOptions = {
-      fftSize: opts.fftSize || 2048,
-      smoothingTimeConstant: typeof opts.smoothingTimeConstant === 'number' ? opts.smoothingTimeConstant : 0.3,
-      mode: opts.mode || 'rms',
-      barCount: opts.barCount || 8,
-    };
-
-    // Ensure microphone permission check has run
-    try {
-      await this._initialMicrophoneCheckPromise;
-    } catch (e) {
-      // permission check might throw when denied
-    }
-
-    if (!this._state._microphoneAllowed || !this._micStream) {
-      try {
-        // Reuse RecognitionManager to request a live stream without stopping tracks
-        const stream = await checkMicrophonePermission(this._updateStatus.bind(this), this._callCallback.bind(this), this._state, { returnStream: true });
-        this._micStream = stream;
-      } catch (err) {
-        this._callCallback('onMicrophonePermissionDenied', err);
-        this._updateStatus('Error: Microphone access denied. Cannot start amplitude analyser.');
-        return false;
+    
+    if (key in this.options) {
+      this.options[key] = value;
+      
+      // Apply changes for options that affect recognition
+      if (this.recognition && (key === 'continuous' || key === 'interimResults' || key === 'lang')) {
+        this.recognition.continuous = this.options.continuous;
+        this.recognition.interimResults = this.options.interimResults;
+        this.recognition.lang = this.options.lang;
       }
-    }
-
-    try {
-      // Create AudioContext and analyser
-      const AudioContext = window.AudioContext || window.webkitAudioContext;
-      if (!AudioContext) {
-        console.error('[JSVoice] Web Audio API not supported in this browser.');
-        return false;
+      
+      // Handle wake word changes
+      if (key === 'wakeWord') {
+        this.options.wakeWord = value ? cleanText(value) : null;
+        this._state._wakeWordModeActive = !!this.options.wakeWord;
+        if (this.options.wakeWord) {
+          this.options.continuous = true; // Force continuous when wake word is set
+        }
       }
-
-      this._audioContext = this._audioContext || new AudioContext();
-      // If context is suspended (autoplay policy), try to resume
-      if (this._audioContext.state === 'suspended') {
-        try { await this._audioContext.resume(); } catch(e) { /* continue */ }
-      }
-
-      this._analyser = this._audioContext.createAnalyser();
-      this._analyser.fftSize = this._amplitudeOptions.fftSize;
-      this._analyser.smoothingTimeConstant = this._amplitudeOptions.smoothingTimeConstant;
-
-      const source = this._audioContext.createMediaStreamSource(this._micStream);
-      source.connect(this._analyser);
-
-      if (this._amplitudeOptions.mode === 'bars') {
-        // Use frequency-domain data to make multiple bars
-        const freqSize = this._analyser.frequencyBinCount;
-        const freqData = new Uint8Array(freqSize);
-        const sampleBars = () => {
-          if (!this._analyser || !this._amplitudeCallback) return;
-          this._analyser.getByteFrequencyData(freqData);
-          // Group frequency bins into barCount buckets
-          const bars = new Array(this._amplitudeOptions.barCount).fill(0);
-          const binsPerBar = Math.floor(freqSize / bars.length) || 1;
-          for (let i = 0; i < bars.length; i++) {
-            let sum = 0;
-            const start = i * binsPerBar;
-            const end = Math.min(start + binsPerBar, freqSize);
-            for (let j = start; j < end; j++) sum += freqData[j];
-            const avg = sum / (end - start || 1);
-            // Normalize 0..255 to 0..1
-            bars[i] = Math.min(1, Math.max(0, avg / 255));
-          }
-          try { this._amplitudeCallback(bars); } catch (e) { console.error('[JSVoice] amplitude callback error', e); }
-          this._amplitudeRafId = window.requestAnimationFrame(sampleBars);
-        };
-        if (this._amplitudeRafId) cancelAnimationFrame(this._amplitudeRafId);
-        this._amplitudeRafId = window.requestAnimationFrame(sampleBars);
-      } else {
-        const bufferLength = this._analyser.fftSize;
-        const data = new Float32Array(bufferLength);
-        const sample = () => {
-          if (!this._analyser || !this._amplitudeCallback) return;
-          this._analyser.getFloatTimeDomainData(data);
-          // Compute RMS
-          let sum = 0;
-          for (let i = 0; i < data.length; i++) {
-            const v = data[i];
-            sum += v * v;
-          }
-          const rms = Math.sqrt(sum / data.length);
-          // Clamp and normalize (rms is typically 0..1)
-          const amplitude = Math.min(1, Math.max(0, rms));
-          try {
-            this._amplitudeCallback(amplitude);
-          } catch (e) {
-            console.error('[JSVoice] amplitude callback error', e);
-          }
-          this._amplitudeRafId = window.requestAnimationFrame(sample);
-        };
-        if (this._amplitudeRafId) cancelAnimationFrame(this._amplitudeRafId);
-        this._amplitudeRafId = window.requestAnimationFrame(sample);
-      }
-
-  // (per-branch RAF already started above)
-
-      this._updateStatus('Amplitude monitoring started.');
-      return true;
-    } catch (e) {
-      console.error('[JSVoice] startAmplitude error:', e);
-      this._callCallback('onError', e);
-      return false;
+    } else {
+      const error = new Error(`Unknown option: ${key}`);
+      console.warn("[JSVoice] setOption:", error.message);
+      this._callCallback('onError', error);
     }
-  }
-
-  /**
-   * Stops real-time amplitude monitoring and frees resources.
-   */
-  stopAmplitude() {
-    if (this._amplitudeRafId) {
-      cancelAnimationFrame(this._amplitudeRafId);
-      this._amplitudeRafId = null;
-    }
-    if (this._analyser) {
-      try { this._analyser.disconnect(); } catch (e) {}
-      this._analyser = null;
-    }
-    if (this._audioContext) {
-      try { this._audioContext.close(); } catch (e) {}
-      this._audioContext = null;
-    }
-    if (this._micStream) {
-      try { this._micStream.getTracks().forEach(t => t.stop()); } catch (e) {}
-      this._micStream = null;
-    }
-    this._amplitudeCallback = null;
-    this._updateStatus('Amplitude monitoring stopped.');
   }
 }
 

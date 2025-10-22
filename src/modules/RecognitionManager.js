@@ -12,6 +12,14 @@
  */
 export function initRecognition(options, updateStatus, callCallback, handleSpeechResult, startRecognitionInternal, state) {
   const SpeechRecognitionConstructor = window.SpeechRecognition || window.webkitSpeechRecognition;
+  
+  if (!SpeechRecognitionConstructor) {
+    const error = new Error("SpeechRecognition constructor not available");
+    console.error("[JSVoice] initRecognition:", error.message);
+    callCallback('onError', error);
+    return null;
+  }
+  
   const recognition = new SpeechRecognitionConstructor();
 
   recognition.continuous = options.continuous; // Will be forced true if wakeWord is set
@@ -164,8 +172,10 @@ export function initRecognition(options, updateStatus, callCallback, handleSpeec
  */
 export async function checkMicrophonePermission(updateStatus, callCallback, state, opts = {}) {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    const error = new Error("MediaDevices API not supported, cannot check microphone.");
     state._microphoneAllowed = false;
-    updateStatus("Error: MediaDevices API not supported, cannot check microphone.");
+    updateStatus(`Error: ${error.message}`);
+    callCallback('onError', error);
     return;
   }
 

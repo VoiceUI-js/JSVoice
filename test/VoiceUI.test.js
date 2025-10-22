@@ -1,6 +1,6 @@
 // test/VoiceUI.test.js
 
-import VoiceUI from '../src/VoiceUI';
+import JSVoice from '../src/JSVoice.js';
 
 // Access the mocked SpeechRecognition constructor and other globals
 const MockSpeechRecognition = window.SpeechRecognition;
@@ -8,7 +8,7 @@ const mockSpeechSynthesis = window.speechSynthesis;
 const mockMediaDevices = navigator.mediaDevices;
 
 
-describe('JSVoice Library (VoiceUI Class) Core Functionality', () => {
+describe('JSVoice Library Core Functionality', () => {
   let voiceUi;
   let mockCallbacks;
   // This will hold the specific instance of MockSpeechRecognition for the current test
@@ -29,15 +29,14 @@ describe('JSVoice Library (VoiceUI Class) Core Functionality', () => {
       onStatusChange: jest.fn(),
     };
 
-    // 1. Instantiate VoiceUI. This synchronously calls the mocked SpeechRecognition constructor once.
-    voiceUi = new VoiceUI(mockCallbacks);
+    // 1. Instantiate JSVoice. This synchronously calls the mocked SpeechRecognition constructor once.
+    voiceUi = new JSVoice(mockCallbacks);
     
-    // 2. CRITICAL FIX: Get the instance directly from the mock's internal array.
-    // Since mockSpeechRecognitionInstances is cleared in setupTests.js, this is guaranteed to be the first instance created.
-    recognitionInstance = MockSpeechRecognition.mock.instances[0];
-
-    // 3. Await the internal promise to ensure microphone checks finish
-    await voiceUi._initialMicrophoneCheckPromise; 
+    // 2. Await the internal promise to ensure microphone checks finish
+    await voiceUi._initialMicrophoneCheckPromise;
+    
+    // 3. CRITICAL FIX: Get the instance directly from the JSVoice object
+    recognitionInstance = voiceUi.recognition; 
   });
 
   afterEach(() => {
@@ -45,9 +44,10 @@ describe('JSVoice Library (VoiceUI Class) Core Functionality', () => {
   });
 
   test('should be instantiated and check API support', () => {
-    expect(VoiceUI.isApiSupported).toBe(true);
+    expect(JSVoice.isApiSupported).toBe(true);
     expect(MockSpeechRecognition).toHaveBeenCalledTimes(1);
     expect(voiceUi.isListening).toBe(false);
+    expect(recognitionInstance).toBeDefined();
   });
 
   test('should request microphone permission on instantiation', () => {
@@ -69,7 +69,7 @@ describe('JSVoice Library (VoiceUI Class) Core Functionality', () => {
       onMicrophonePermissionDenied: jest.fn(),
       onError: jest.fn(),
     };
-    const deniedVoiceUi = new VoiceUI(deniedCallbacks);
+    const deniedVoiceUi = new JSVoice(deniedCallbacks);
     
     await deniedVoiceUi._initialMicrophoneCheckPromise.catch(() => {});
     await new Promise(resolve => setTimeout(resolve, 10)); 
@@ -79,17 +79,23 @@ describe('JSVoice Library (VoiceUI Class) Core Functionality', () => {
     expect(deniedVoiceUi.microphoneAllowed).toBe(false);
   });
 
-  test('should start speech recognition', () => {
-    // recognitionInstance is now guaranteed to be defined
+  test('should start speech recognition', async () => {
+    // Check if recognitionInstance is defined
+    expect(recognitionInstance).toBeDefined();
+    expect(recognitionInstance.start).toBeDefined();
+    
+    // Check if JSVoice isApiSupported is true
+    expect(JSVoice.isApiSupported).toBe(true);
+    
     recognitionInstance.start.mockClear(); 
-    voiceUi.start();
+    await voiceUi.start();
     expect(recognitionInstance.start).toHaveBeenCalledTimes(1);
     expect(mockCallbacks.onSpeechStart).toHaveBeenCalledTimes(1);
     expect(voiceUi.isListening).toBe(true);
   });
 
-  test('should stop speech recognition', () => {
-    voiceUi.start(); 
+  test('should stop speech recognition', async () => {
+    await voiceUi.start(); 
     recognitionInstance.start.mockClear(); 
 
     voiceUi.stop();
@@ -98,11 +104,11 @@ describe('JSVoice Library (VoiceUI Class) Core Functionality', () => {
     expect(voiceUi.isListening).toBe(false);
   });
 
-  test('should toggle speech recognition', () => {
+  test('should toggle speech recognition', async () => {
     recognitionInstance.start.mockClear(); 
     recognitionInstance.stop.mockClear();
 
-    voiceUi.toggle(); // Should start
+    await voiceUi.toggle(); // Should start
     expect(recognitionInstance.start).toHaveBeenCalledTimes(1);
     expect(voiceUi.isListening).toBe(true);
 
@@ -114,7 +120,7 @@ describe('JSVoice Library (VoiceUI Class) Core Functionality', () => {
   test('should process a custom registered command', async () => {
     const customAction = jest.fn();
     voiceUi.addCommand('Hello World!', customAction);
-    voiceUi.start(); 
+    await voiceUi.start(); 
 
     // recognitionInstance is now correctly defined and has _fireResult
     recognitionInstance._fireResult('Hello World!'); 
@@ -126,7 +132,7 @@ describe('JSVoice Library (VoiceUI Class) Core Functionality', () => {
   
   test('should handle "fill input" command', async () => {
     document.body.innerHTML = '<input id="test-input" name="test input" value="" />';
-    voiceUi.start(); 
+    await voiceUi.start(); 
 
     recognitionInstance._fireResult('fill test input with hello'); 
     await Promise.resolve();
@@ -139,7 +145,7 @@ describe('JSVoice Library (VoiceUI Class) Core Functionality', () => {
     document.body.innerHTML = '<button id="test-button" name="test button" onclick="global.mockButtonClick()">Test Button</button>';
     global.mockButtonClick = jest.fn(); 
     
-    voiceUi.start(); 
+    await voiceUi.start(); 
 
     recognitionInstance._fireResult('click test button');
     await Promise.resolve();
@@ -149,7 +155,7 @@ describe('JSVoice Library (VoiceUI Class) Core Functionality', () => {
   });
 
   test('should handle unknown commands', async () => {
-    voiceUi.start(); 
+    await voiceUi.start(); 
 
     recognitionInstance._fireResult('some unknown command');
     await Promise.resolve();
@@ -174,7 +180,7 @@ describe('JSVoice Library (VoiceUI Class) Core Functionality', () => {
     voiceUi.setOption('autoRestart', true);
     voiceUi.setOption('restartDelay', 50); 
 
-    voiceUi.start();
+    await voiceUi.start();
     recognitionInstance.start.mockClear(); 
 
     if (recognitionInstance.onend) recognitionInstance.onend(); 
@@ -189,7 +195,7 @@ describe('JSVoice Library (VoiceUI Class) Core Functionality', () => {
     voiceUi.setOption('autoRestart', false);
     voiceUi.setOption('restartDelay', 50); 
 
-    voiceUi.start();
+    await voiceUi.start();
     recognitionInstance.start.mockClear(); 
 
     if (recognitionInstance.onend) recognitionInstance.onend(); 
@@ -201,7 +207,7 @@ describe('JSVoice Library (VoiceUI Class) Core Functionality', () => {
   });
 
   test('should handle recognition error (network type)', async () => {
-    voiceUi.start();
+    await voiceUi.start();
     recognitionInstance.start.mockClear(); 
 
     recognitionInstance._fireError('network', 'A simulated network error occurred.');
@@ -214,7 +220,7 @@ describe('JSVoice Library (VoiceUI Class) Core Functionality', () => {
   });
   
   test('should handle recognition error (not-allowed type)', async () => {
-    voiceUi.start();
+    await voiceUi.start();
     recognitionInstance.start.mockClear();
 
     const errorEvent = { error: 'not-allowed', message: 'User denied microphone.' };
@@ -237,7 +243,7 @@ describe('JSVoice Library (VoiceUI Class) Core Functionality', () => {
     voiceUi.addCommand('delete this command', action);
     expect(voiceUi.removeCommand('delete this command')).toBe(true);
     
-    voiceUi.start();
+    await voiceUi.start();
     recognitionInstance._fireResult('delete this command');
     await Promise.resolve();
 
@@ -258,7 +264,7 @@ describe('JSVoice Library (VoiceUI Class) Core Functionality', () => {
       onError: jest.fn(),
       onStatusChange: jest.fn() 
     };
-    const deniedVoiceUi = new VoiceUI(deniedCallbacks); 
+    const deniedVoiceUi = new JSVoice(deniedCallbacks); 
     
     await deniedVoiceUi._initialMicrophoneCheckPromise.catch(() => {});
     await new Promise(resolve => setTimeout(resolve, 10));
@@ -279,7 +285,7 @@ describe('JSVoice Library (VoiceUI Class) Core Functionality', () => {
   
   test('should process fill input with quotes', async () => {
     document.body.innerHTML = '<input id="item-name" name="item name" value="" />';
-    voiceUi.start();
+    await voiceUi.start();
     
     recognitionInstance._fireResult('fill item name with "apple sauce"');
     await Promise.resolve();
@@ -289,7 +295,7 @@ describe('JSVoice Library (VoiceUI Class) Core Functionality', () => {
   
   test('should process fill input when value is also a field name', async () => {
     document.body.innerHTML = '<input id="name" name="name" value="" />';
-    voiceUi.start();
+    await voiceUi.start();
 
     recognitionInstance._fireResult('fill name with name');
     await Promise.resolve();
@@ -323,11 +329,11 @@ describe('JSVoice Library (VoiceUI Class) Core Functionality', () => {
       onStatusChange: jest.fn()
     };
 
-    const optionVoiceUi = new VoiceUI(initialOptions);
+    const optionVoiceUi = new JSVoice(initialOptions);
     await optionVoiceUi._initialMicrophoneCheckPromise;
     await new Promise(resolve => setTimeout(resolve, 10));
 
-    optionVoiceUi.start();
+    await optionVoiceUi.start();
     
     // Get the instance created for this specific VoiceUI instance
     const optionRecognitionInstance = MockSpeechRecognition.mock.instances[0];
