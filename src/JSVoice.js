@@ -207,6 +207,14 @@ class JSVoice {
     if (this._wakeWordCommandTimer) {
       clearTimeout(this._wakeWordCommandTimer);
       this._wakeWordCommandTimer = null;
+
+    // Real-time amplitude / analyser support
+    this._audioContext = null;
+    this._analyser = null;
+    this._micStream = null; // MediaStream used for analyser (kept separate from recognition)
+    this._amplitudeCallback = null;
+    this._amplitudeRafId = null;
+    this._amplitudeOptions = null;
     }
     if (this._state._isListening) {
         this._updateStatus(`Reverted to wake word mode. Waiting for "${this.options.wakeWord}"...`);
@@ -433,7 +441,7 @@ class JSVoice {
     }
   }
 
-  /**
+  /**f
    * Removes a previously registered pattern voice command.
    * @param {string} pattern - The pattern of the command to remove.
    * @returns {boolean} True if the command was removed, false otherwise.
