@@ -292,6 +292,49 @@ class JSVoice {
       this.start();
     }
   }
+
+  /**
+   * Manually activates command listening mode for a short period, as if the wake word was spoken.
+   * This is useful for implementing a "push-to-talk" button that works alongside wake word mode.
+   * If recognition is not currently running, it will be started.
+   */
+  async activateCommandMode() {
+    // This feature is most relevant when in wake word mode, but can also work as a general "start and listen" button.
+    if (!this._state._microphoneAllowed) {
+        // Await the initial check if it hasn't completed, or re-check if it failed before.
+        await this._checkMicrophonePermission().catch(e => {
+          if (e && e.name === 'NotAllowedError') return;
+        });
+
+        if (!this._state._microphoneAllowed) {
+            this._updateStatus("Microphone access denied. Cannot activate command mode.");
+            return;
+        }
+    }
+
+    // If recognition is not running, start it. The start() method handles all status updates.
+    if (!this.isListening) {
+        const started = await this.start();
+        if (!started) {
+            // Failed to start, do nothing else. Status is already updated by start().
+            return;
+        }
+    }
+
+    // If in wake word mode, explicitly activate the "awaiting command" state and set a timeout.
+    if (this._state._wakeWordModeActive) {
+        this._state._awaitingCommand = true;
+        this._updateStatus(`Listening for command...`); // A clear status for push-to-talk activation
+        
+        // Set/reset the timeout that will revert to only listening for the wake word.
+        if (this._wakeWordCommandTimer) clearTimeout(this._wakeWordCommandTimer);
+        this._wakeWordCommandTimer = setTimeout(() => {
+            this._resetWakeWordState();
+        }, this.options.wakeWordTimeout);
+    }
+    // If not in wake word mode, the `start()` call above is sufficient, and the status
+    // will have been appropriately set to "Listening for commands...".
+  }
   
   /**
    * Makes the browser speak a given text.

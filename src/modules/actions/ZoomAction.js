@@ -1,38 +1,52 @@
-// src/modules/actions/ZoomAction.js
 
 /**
- * Handles all built-in zoom commands.
- * @param {string} cleanedTranscript - The processed, cleaned speech.
- * @param {Function} updateStatus - Status update function.
- * @param {Function} callCallback - Callback function.
- * @returns {boolean} True if a zoom action was performed, false otherwise.
+ * Action to zoom the page.
  */
-export function handleZoom(cleanedTranscript, updateStatus, callCallback) {
-  const s = cleanedTranscript;
+const zoomInPhrases = ['zoom in'];
+const zoomOutPhrases = ['zoom out'];
+const zoomResetPhrases = ['reset zoom'];
+const allPhrases = [...zoomInPhrases, ...zoomOutPhrases, ...zoomResetPhrases];
 
-  let currentZoom = parseFloat(document.body.style.zoom || '1');
-  if (isNaN(currentZoom)) currentZoom = 1;
-  const zoomStep = 0.1;
-  const minZoom = 0.5;
-  const maxZoom = 2.0;
+export default {
+  name: 'zoom',
 
-  if (s.includes("zoom in")) {
-    let newZoom = Math.min(maxZoom, currentZoom + zoomStep);
-    document.body.style.zoom = newZoom;
-    callCallback('onActionPerformed', 'zoomIn', newZoom);
-    updateStatus(`Zoomed to ${Math.round(newZoom * 100)}%.`); return true;
-  }
-  if (s.includes("zoom out")) {
-    let newZoom = Math.max(minZoom, currentZoom - zoomStep);
-    document.body.style.zoom = newZoom;
-    callCallback('onActionPerformed', 'zoomOut', newZoom);
-    updateStatus(`Zoomed to ${Math.round(newZoom * 100)}%.`); return true;
-  }
-  if (s.includes("reset zoom")) {
-    document.body.style.zoom = 1;
-    callCallback('onActionPerformed', 'zoomReset', 1);
-    updateStatus("Zoom reset."); return true;
-  }
+  test(phrase) {
+    const p = phrase.toLowerCase().trim();
+    return allPhrases.some(x => p.includes(x));
+  },
 
-  return false;
-}
+  run(phrase, ctx) {
+    const p = phrase.toLowerCase().trim();
+    const win = ctx.win || window;
+    const doc = win.document;
+    const body = doc.body;
+
+    let currentZoom = parseFloat(body.style.zoom || '1');
+    if (isNaN(currentZoom)) currentZoom = 1;
+    const zoomStep = 0.1;
+    const minZoom = 0.5;
+    const maxZoom = 2.0;
+
+    if (zoomInPhrases.some(x => p.includes(x))) {
+        let newZoom = Math.min(maxZoom, currentZoom + zoomStep);
+        body.style.zoom = newZoom;
+        ctx.onActionPerformed?.('zoomIn', newZoom);
+        ctx.onStatusChange?.(`Zoomed to ${Math.round(newZoom * 100)}%`);
+        return true;
+    }
+    if (zoomOutPhrases.some(x => p.includes(x))) {
+        let newZoom = Math.max(minZoom, currentZoom - zoomStep);
+        body.style.zoom = newZoom;
+        ctx.onActionPerformed?.('zoomOut', newZoom);
+        ctx.onStatusChange?.(`Zoomed to ${Math.round(newZoom * 100)}%`);
+        return true;
+    }
+    if (zoomResetPhrases.some(x => p.includes(x))) {
+        body.style.zoom = 1;
+        ctx.onActionPerformed?.('zoomReset', 1);
+        ctx.onStatusChange?.("Zoom reset.");
+        return true;
+    }
+    return false;
+  }
+};
