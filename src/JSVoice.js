@@ -207,15 +207,15 @@ class JSVoice {
     if (this._wakeWordCommandTimer) {
       clearTimeout(this._wakeWordCommandTimer);
       this._wakeWordCommandTimer = null;
-
-    // Real-time amplitude / analyser support
-    this._audioContext = null;
-    this._analyser = null;
-    this._micStream = null; // MediaStream used for analyser (kept separate from recognition)
-    this._amplitudeCallback = null;
-    this._amplitudeRafId = null;
-    this._amplitudeOptions = null;
     }
+    // FIXED: Removed unused audio analyser variables that were placeholders
+    // this._audioContext = null; 
+    // this._analyser = null;
+    // this._micStream = null;
+    // this._amplitudeCallback = null;
+    // this._amplitudeRafId = null;
+    // this._amplitudeOptions = null;
+    
     if (this._state._isListening) {
         this._updateStatus(`Reverted to wake word mode. Waiting for "${this.options.wakeWord}"...`);
     } else {

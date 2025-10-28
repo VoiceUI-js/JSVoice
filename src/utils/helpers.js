@@ -23,6 +23,7 @@ export function cleanText(text) {
     return '';
   }
   // IMPROVED: Added more whitespace characters and common symbols, including unicode whitespace
+  // This version handles a broader range of punctuation and ensures consistent spacing.
   return text
     .toLowerCase()
     .replace(/[.,/#!$%^&*;:{}=\-_`~()\[\]<>+@?|\\]/g, '') // Remove a wider range of punctuation
@@ -38,6 +39,7 @@ export function cleanText(text) {
 function isValidInputField(element) {
   if (!element) return false;
   const tagName = element.tagName;
+  // Ensure it's a field the user can type into or select from
   return tagName === 'INPUT' || tagName === 'TEXTAREA' || tagName === 'SELECT';
 }
 
@@ -51,7 +53,7 @@ function isValidInputField(element) {
 export function findInputField(rawIdentifier) {
   const identifier = cleanText(rawIdentifier); // Clean identifier once
 
-  // Query all potential input fields (inputs, textareas, selects)
+  // Query all potential input fields (inputs, textareas, selects, excluding specific types)
   const allPotentialFields = document.querySelectorAll(
     'input:not([type="hidden"]):not([type="radio"]):not([type="checkbox"]), textarea, select'
   );
@@ -60,7 +62,7 @@ export function findInputField(rawIdentifier) {
 
   // --- Search Precedence (from most specific to least) ---
 
-  // 1. data-voice-command-fill attribute (most explicit voice control)
+  // 1. data-voice-command-fill attribute (most explicit voice control, exact match)
   for (const field of allPotentialFields) {
     const dataCommand = cleanText(field.getAttribute('data-voice-command-fill') || '');
     if (dataCommand === identifier) { // Exact match for explicit command
@@ -68,7 +70,7 @@ export function findInputField(rawIdentifier) {
     }
   }
 
-  // 2. Associated Label text (exact match after cleaning)
+  // 2. Associated Label text (exact match after cleaning of label text)
   const labels = document.querySelectorAll('label');
   for (const label of labels) {
     const labelText = cleanText(label.textContent || '');
@@ -92,6 +94,7 @@ export function findInputField(rawIdentifier) {
   }
 
   // 4. Placeholder text, Aria-label, Name attribute (contains, case-insensitive after cleaning)
+  // This is handled by iterating through all potential fields and comparing cleaned versions
   for (const field of allPotentialFields) {
     const placeholder = cleanText(field.placeholder || '');
     const ariaLabel = cleanText(field.getAttribute('aria-label') || '');

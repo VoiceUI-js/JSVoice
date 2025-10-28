@@ -4,9 +4,9 @@ import { handleScroll } from './actions/ScrollAction.js';
 import { handleZoom } from './actions/ZoomAction.js';
 import { handleFillInput } from './actions/FillInputAction.js';
 import { handleClick } from './actions/ClickAction.js';
-import { handleReadContent } from './actions/ReadContentAction.js'; // NEW import
+import { handleReadContent } from './actions/ReadContentAction.js';
 import { handleDarkMode } from './actions/ToggleDarkModeAction.js';
-
+import { OpenTabAction } from './actions/OpenTabAction.js'; // FIXED: Missing import added
 
 /**
  * Attempts to match and execute a built-in DOM action (Scroll, Zoom, Click, Fill Input, Read Content).
