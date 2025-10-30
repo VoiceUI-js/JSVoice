@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>JSVoice — Examples</title>
+    <style>
+        :root {
+            --bg: #f7f8fa;
+            --card: #ffffff;
+            --muted: #666;
+            --accent: #2563eb;
+            --radius: 10px;
+            --gap: 20px;
+        }
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Inter, Roboto, system-ui, -apple-system, "Segoe UI", sans-serif;
+            background: var(--bg);
+            color: #111827;
+        }
+
+        .wrap {
+            max-width: 1100px;
+            margin: 36px auto;
+            padding: 20px;
+        }
+
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 30px;
+        }
+
+        header h1 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        header p {
+            margin: 0;
+            color: var(--muted);
+            font-size: 1rem
+        }
+
+        .examples-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: var(--gap);
+            align-items: start;
+        }
+
+        .example-card {
+            background: var(--card);
+            border-radius: var(--radius);
+            padding: 16px;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 6px 18px rgba(15, 23, 42, 0.06);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            min-height: 120px;
+            transition: transform .12s ease, box-shadow .12s ease;
+        }
+
+        .example-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 26px rgba(2, 6, 23, 0.08);
+        }
+
+        .example-card h3 {
+            margin: 0;
+            font-size: 1.1rem
+        }
+
+        .example-card p {
+            margin: 0;
+            color: var(--muted);
+            font-size: 0.95rem;
+            flex: 1
+        }
+
+        .example-card a {
+            align-self: flex-start;
+            text-decoration: none;
+            color: #fff;
+            background: var(--accent);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .example-card a:focus {
+            outline: 3px solid rgba(37, 99, 235, 0.18)
+        }
+
+        @media (max-width:420px) {
+            .wrap {
+                padding: 12px
+            }
+
+            header h1 {
+                font-size: 1rem
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrap">
+        <header>
+            <div>
+                <h1>JSVoice — Example Demos</h1>
+                <p>Click on view demo button to open the demo. These are simple, framework-free example pages.</p>
+            </div>
+        </header>
+
+        <main class="examples-grid" aria-live="polite">
+            <section class="example-card" aria-labelledby="ex-wave-title">
+                <h3 id="ex-wave-title">Mic Waveform</h3>
+                <p>Real-time microphone waveform visualization and controls.</p>
+                <a href="./mic-waveform/">View Demo</a>
+            </section>
+
+            <section class="example-card" aria-labelledby="ex-realtime-title">
+                <h3 id="ex-realtime-title">Real-time Demo</h3>
+                <p>Demonstrates low-latency audio capture and UI integration.</p>
+                <a href="./real-time/">View Demo</a>
+            </section>
+
+            <section class="example-card" aria-labelledby="ex-toggle-title">
+                <h3 id="ex-toggle-title">Theme Toggle</h3>
+                <p>Shows dark/light theme toggle and persistent preference handling.</p>
+                <a href="./toggle-theme/">View Demo</a>
+            </section>
+        </main>
+    </div>
+</body>
+
+</html>
