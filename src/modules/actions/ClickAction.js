@@ -18,16 +18,24 @@ export function handleClick(rawTranscript, updateStatus, callCallback) {
     );
 
     for (const element of possibleButtons) {
-      let elementText = cleanText(element.textContent || '');
-      let ariaLabel = cleanText(element.getAttribute('aria-label') || '');
-      let inputValue = (element.tagName === 'INPUT' && (element.type === 'button' || element.type === 'submit'))
-        ? cleanText(element.value || '') : '';
-      let dataCommand = cleanText(element.getAttribute('data-voice-command-click') || '');
+      const elementText = cleanText(element.textContent || '');
+      const ariaLabel = cleanText(element.getAttribute('aria-label') || '');
+      const inputValue =
+        element.tagName === 'INPUT' && (element.type === 'button' || element.type === 'submit')
+          ? cleanText(element.value || '')
+          : '';
+      const dataCommand = cleanText(element.getAttribute('data-voice-command-click') || '');
 
-      if (elementText.includes(targetTextCleaned) || ariaLabel.includes(targetTextCleaned) || inputValue.includes(targetTextCleaned) || dataCommand.includes(targetTextCleaned)) {
+      if (
+        elementText.includes(targetTextCleaned) ||
+        ariaLabel.includes(targetTextCleaned) ||
+        inputValue.includes(targetTextCleaned) ||
+        dataCommand.includes(targetTextCleaned)
+      ) {
         element.click();
         callCallback('onActionPerformed', 'clickButton', { text: targetTextCleaned, element });
-        updateStatus(`Clicked "${targetTextCleaned}".`); return true;
+        updateStatus(`Clicked "${targetTextCleaned}".`);
+        return true;
       }
     }
     updateStatus(`Could not find button "${targetTextCleaned}".`);

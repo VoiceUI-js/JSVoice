@@ -19,17 +19,45 @@ import { OpenTabAction } from './actions/OpenTabAction.js'; // FIXED: Missing im
  * @param {Function} jsVoiceSpeakMethod - The JSVoice instance's speak method, passed for read actions.
  * @returns {boolean} True if a built-in action was handled, false otherwise.
  */
-export function handleBuiltInActions(rawTranscript, cleanedTranscript, updateStatus, callCallback, jsVoiceSpeakMethod) {
+export function handleBuiltInActions(
+  rawTranscript,
+  cleanedTranscript,
+  updateStatus,
+  callCallback,
+  jsVoiceSpeakMethod
+) {
   // Order defines priority. Open Tab and Read content is placed high due to its common use.
   // Pass rawTranscript here, as some actions (like FillInput or ReadContent) might need it for exact phrasing.
 
-  if (OpenTabAction(rawTranscript, cleanedTranscript, updateStatus, callCallback)) return true; 
-  if (handleReadContent(rawTranscript, cleanedTranscript, updateStatus, callCallback, jsVoiceSpeakMethod)) return true;
-  if (handleScroll(cleanedTranscript, updateStatus, callCallback)) return true;
-  if (handleZoom(cleanedTranscript, updateStatus, callCallback)) return true;
-  if (handleFillInput(rawTranscript, updateStatus, callCallback)) return true;
-  if (handleClick(rawTranscript, updateStatus, callCallback)) return true;
-  if (handleDarkMode(cleanedTranscript, updateStatus, callCallback)) return true;
+  if (OpenTabAction(rawTranscript, cleanedTranscript, updateStatus, callCallback)) {
+    return true;
+  }
+  if (
+    handleReadContent(
+      rawTranscript,
+      cleanedTranscript,
+      updateStatus,
+      callCallback,
+      jsVoiceSpeakMethod
+    )
+  ) {
+    return true;
+  }
+  if (handleScroll(cleanedTranscript, updateStatus, callCallback)) {
+    return true;
+  }
+  if (handleZoom(cleanedTranscript, updateStatus, callCallback)) {
+    return true;
+  }
+  if (handleFillInput(rawTranscript, updateStatus, callCallback)) {
+    return true;
+  }
+  if (handleClick(rawTranscript, updateStatus, callCallback)) {
+    return true;
+  }
+  if (handleDarkMode(cleanedTranscript, updateStatus, callCallback)) {
+    return true;
+  }
 
   return false;
 }

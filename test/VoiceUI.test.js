@@ -7,12 +7,11 @@ const MockSpeechRecognition = window.SpeechRecognition;
 const mockSpeechSynthesis = window.speechSynthesis;
 const mockMediaDevices = navigator.mediaDevices;
 
-
 describe('JSVoice Library Core Functionality', () => {
   let voiceUi;
   let mockCallbacks;
   // This will hold the specific instance of MockSpeechRecognition for the current test
-  let recognitionInstance; 
+  let recognitionInstance;
 
   beforeEach(async () => {
     // The beforeEach in setupTests.js already handles clearing all mocks.
@@ -31,16 +30,28 @@ describe('JSVoice Library Core Functionality', () => {
 
     // 1. Instantiate JSVoice. This synchronously calls the mocked SpeechRecognition constructor once.
     voiceUi = new JSVoice(mockCallbacks);
-    
+
     // 2. Await the internal promise to ensure microphone checks finish
     await voiceUi._initialMicrophoneCheckPromise;
-    
+
     // 3. CRITICAL FIX: Get the instance directly from the JSVoice object
-    recognitionInstance = voiceUi.recognition; 
+    recognitionInstance = voiceUi.recognition;
   });
 
   afterEach(() => {
-    jest.restoreAllMocks(); 
+    // Stop any running recognition
+    if (voiceUi && voiceUi.isListening) {
+      voiceUi.stop();
+    }
+
+    // Stop any amplitude monitoring
+    if (voiceUi && voiceUi.stopAmplitude) {
+      voiceUi.stopAmplitude();
+    }
+
+    // Clear all timers
+    jest.clearAllTimers();
+    jest.restoreAllMocks();
   });
 
   test('should be instantiated and check API support', () => {
@@ -54,15 +65,15 @@ describe('JSVoice Library Core Functionality', () => {
     expect(mockMediaDevices.getUserMedia).toHaveBeenCalledTimes(1);
     expect(voiceUi.microphoneAllowed).toBe(true);
     expect(mockCallbacks.onMicrophonePermissionGranted).toHaveBeenCalledTimes(1);
-    expect(voiceUi.voiceFeedback).toBe("Voice commands ready. Click mic to start.");
+    expect(voiceUi.voiceFeedback).toBe('Voice commands ready. Click mic to start.');
   });
 
   test('should handle microphone permission denial', async () => {
     jest.clearAllMocks();
-    MockSpeechRecognition.mockClear(); 
+    MockSpeechRecognition.mockClear();
 
-    mockMediaDevices.getUserMedia.mockImplementationOnce(() => 
-      Promise.reject({ name: "NotAllowedError", message: "User denied." })
+    mockMediaDevices.getUserMedia.mockImplementationOnce(() =>
+      Promise.reject({ name: 'NotAllowedError', message: 'User denied.' })
     );
 
     const deniedCallbacks = {
@@ -70,9 +81,9 @@ describe('JSVoice Library Core Functionality', () => {
       onError: jest.fn(),
     };
     const deniedVoiceUi = new JSVoice(deniedCallbacks);
-    
+
     await deniedVoiceUi._initialMicrophoneCheckPromise.catch(() => {});
-    await new Promise(resolve => setTimeout(resolve, 10)); 
+    await new Promise((resolve) => setTimeout(resolve, 10));
 
     expect(deniedCallbacks.onMicrophonePermissionDenied).toHaveBeenCalledTimes(1);
     expect(deniedCallbacks.onError).toHaveBeenCalledTimes(0);
@@ -83,11 +94,11 @@ describe('JSVoice Library Core Functionality', () => {
     // Check if recognitionInstance is defined
     expect(recognitionInstance).toBeDefined();
     expect(recognitionInstance.start).toBeDefined();
-    
+
     // Check if JSVoice isApiSupported is true
     expect(JSVoice.isApiSupported).toBe(true);
-    
-    recognitionInstance.start.mockClear(); 
+
+    recognitionInstance.start.mockClear();
     await voiceUi.start();
     expect(recognitionInstance.start).toHaveBeenCalledTimes(1);
     expect(mockCallbacks.onSpeechStart).toHaveBeenCalledTimes(1);
@@ -95,8 +106,8 @@ describe('JSVoice Library Core Functionality', () => {
   });
 
   test('should stop speech recognition', async () => {
-    await voiceUi.start(); 
-    recognitionInstance.start.mockClear(); 
+    await voiceUi.start();
+    recognitionInstance.start.mockClear();
 
     voiceUi.stop();
     expect(recognitionInstance.stop).toHaveBeenCalledTimes(1);
@@ -105,7 +116,7 @@ describe('JSVoice Library Core Functionality', () => {
   });
 
   test('should toggle speech recognition', async () => {
-    recognitionInstance.start.mockClear(); 
+    recognitionInstance.start.mockClear();
     recognitionInstance.stop.mockClear();
 
     await voiceUi.toggle(); // Should start
@@ -120,32 +131,33 @@ describe('JSVoice Library Core Functionality', () => {
   test('should process a custom registered command', async () => {
     const customAction = jest.fn();
     voiceUi.addCommand('Hello World!', customAction);
-    await voiceUi.start(); 
+    await voiceUi.start();
 
     // recognitionInstance is now correctly defined and has _fireResult
-    recognitionInstance._fireResult('Hello World!'); 
+    recognitionInstance._fireResult('Hello World!');
     await Promise.resolve();
 
     expect(customAction).toHaveBeenCalledTimes(1);
     expect(mockCallbacks.onCommandRecognized).toHaveBeenCalledTimes(1);
   });
-  
+
   test('should handle "fill input" command', async () => {
     document.body.innerHTML = '<input id="test-input" name="test input" value="" />';
-    await voiceUi.start(); 
+    await voiceUi.start();
 
-    recognitionInstance._fireResult('fill test input with hello'); 
+    recognitionInstance._fireResult('fill test input with hello');
     await Promise.resolve();
 
     expect(document.getElementById('test-input').value).toBe('hello');
     expect(mockCallbacks.onActionPerformed).toHaveBeenCalledTimes(1);
   });
-  
+
   test('should handle "click button" command', async () => {
-    document.body.innerHTML = '<button id="test-button" name="test button" onclick="global.mockButtonClick()">Test Button</button>';
-    global.mockButtonClick = jest.fn(); 
-    
-    await voiceUi.start(); 
+    document.body.innerHTML =
+      '<button id="test-button" name="test button" onclick="global.mockButtonClick()">Test Button</button>';
+    global.mockButtonClick = jest.fn();
+
+    await voiceUi.start();
 
     recognitionInstance._fireResult('click test button');
     await Promise.resolve();
@@ -155,7 +167,7 @@ describe('JSVoice Library Core Functionality', () => {
   });
 
   test('should handle unknown commands', async () => {
-    await voiceUi.start(); 
+    await voiceUi.start();
 
     recognitionInstance._fireResult('some unknown command');
     await Promise.resolve();
@@ -163,76 +175,84 @@ describe('JSVoice Library Core Functionality', () => {
     expect(mockCallbacks.onCommandNotRecognized).toHaveBeenCalledTimes(1);
     expect(mockCallbacks.onCommandRecognized).not.toHaveBeenCalled();
   });
-  
+
   test('should speak text using SpeechSynthesis', async () => {
-    const textToSpeak = "Hello, this is a test.";
+    const textToSpeak = 'Hello, this is a test.';
     voiceUi.speak(textToSpeak);
 
     expect(mockSpeechSynthesis.speak).toHaveBeenCalledTimes(1);
     const utterance = mockSpeechSynthesis.speak.mock.calls[0][0];
-    
+
     // This assertion should now pass due to the corrected mock and reliable object access.
-    expect(utterance.text).toBe(textToSpeak); 
+    expect(utterance.text).toBe(textToSpeak);
     expect(utterance).toBeInstanceOf(window.SpeechSynthesisUtterance);
   });
 
   test('should restart recognition on unexpected end if autoRestart is true', async () => {
     voiceUi.setOption('autoRestart', true);
-    voiceUi.setOption('restartDelay', 50); 
+    voiceUi.setOption('restartDelay', 50);
 
     await voiceUi.start();
-    recognitionInstance.start.mockClear(); 
+    recognitionInstance.start.mockClear();
 
-    if (recognitionInstance.onend) recognitionInstance.onend(); 
-    
+    if (recognitionInstance.onend) {
+      recognitionInstance.onend();
+    }
+
     // Wait for the restart delay to pass
-    await new Promise(resolve => setTimeout(resolve, voiceUi.options.restartDelay + 50)); 
+    await new Promise((resolve) => setTimeout(resolve, voiceUi.options.restartDelay + 50));
 
-    expect(recognitionInstance.start).toHaveBeenCalledTimes(1); 
+    expect(recognitionInstance.start).toHaveBeenCalledTimes(1);
   });
 
   test('should not restart recognition if autoRestart is false', async () => {
     voiceUi.setOption('autoRestart', false);
-    voiceUi.setOption('restartDelay', 50); 
+    voiceUi.setOption('restartDelay', 50);
 
     await voiceUi.start();
-    recognitionInstance.start.mockClear(); 
+    recognitionInstance.start.mockClear();
 
-    if (recognitionInstance.onend) recognitionInstance.onend(); 
-    
+    if (recognitionInstance.onend) {
+      recognitionInstance.onend();
+    }
+
     // Wait for the restart delay to pass
-    await new Promise(resolve => setTimeout(resolve, voiceUi.options.restartDelay + 50));
+    await new Promise((resolve) => setTimeout(resolve, voiceUi.options.restartDelay + 50));
 
-    expect(recognitionInstance.start).not.toHaveBeenCalled(); 
+    expect(recognitionInstance.start).not.toHaveBeenCalled();
   });
 
   test('should handle recognition error (network type)', async () => {
     await voiceUi.start();
-    recognitionInstance.start.mockClear(); 
+    recognitionInstance.start.mockClear();
 
     recognitionInstance._fireError('network', 'A simulated network error occurred.');
-    
+
     // Wait for the restart delay to pass
-    await new Promise(resolve => setTimeout(resolve, voiceUi.options.restartDelay + 50)); 
-    
-    expect(mockCallbacks.onError).toHaveBeenCalledWith(expect.objectContaining({ error: 'network' }));
+    await new Promise((resolve) => setTimeout(resolve, voiceUi.options.restartDelay + 50));
+
+    expect(mockCallbacks.onError).toHaveBeenCalledWith(
+      expect.objectContaining({ error: 'network' })
+    );
     expect(recognitionInstance.start).toHaveBeenCalledTimes(1); // Auto-restart is expected for network errors
   });
-  
+
   test('should handle recognition error (not-allowed type)', async () => {
     await voiceUi.start();
     recognitionInstance.start.mockClear();
 
     const errorEvent = { error: 'not-allowed', message: 'User denied microphone.' };
-    recognitionInstance._fireError(errorEvent.error, errorEvent.message); 
+    recognitionInstance._fireError(errorEvent.error, errorEvent.message);
 
     // Wait for the restart delay to pass (should not restart)
-    await new Promise(resolve => setTimeout(resolve, voiceUi.options.restartDelay + 50)); 
+    await new Promise((resolve) => setTimeout(resolve, voiceUi.options.restartDelay + 50));
 
-    expect(mockCallbacks.onError).toHaveBeenCalledWith(expect.objectContaining({ error: 'not-allowed' }));
+    expect(mockCallbacks.onError).toHaveBeenCalledWith(
+      expect.objectContaining({ error: 'not-allowed' })
+    );
     expect(recognitionInstance.start).not.toHaveBeenCalled(); // No restart for not-allowed errors
   });
-  
+
   test('should update options using setOption', () => {
     voiceUi.setOption('lang', 'es-ES');
     expect(voiceUi.options.lang).toBe('es-ES');
@@ -242,57 +262,57 @@ describe('JSVoice Library Core Functionality', () => {
     const action = jest.fn();
     voiceUi.addCommand('delete this command', action);
     expect(voiceUi.removeCommand('delete this command')).toBe(true);
-    
+
     await voiceUi.start();
     recognitionInstance._fireResult('delete this command');
     await Promise.resolve();
 
     expect(action).not.toHaveBeenCalled();
   });
-  
+
   test('should prevent start if microphone not allowed initially', async () => {
     // Reset mocks for THIS test only
     jest.clearAllMocks();
     MockSpeechRecognition.mockClear();
-    
-    mockMediaDevices.getUserMedia.mockImplementationOnce(() => 
-      Promise.reject({ name: "NotAllowedError", message: "User denied." })
+
+    mockMediaDevices.getUserMedia.mockImplementationOnce(() =>
+      Promise.reject({ name: 'NotAllowedError', message: 'User denied.' })
     );
 
-    const deniedCallbacks = { 
-      onMicrophonePermissionDenied: jest.fn(), 
+    const deniedCallbacks = {
+      onMicrophonePermissionDenied: jest.fn(),
       onError: jest.fn(),
-      onStatusChange: jest.fn() 
+      onStatusChange: jest.fn(),
     };
-    const deniedVoiceUi = new JSVoice(deniedCallbacks); 
-    
+    const deniedVoiceUi = new JSVoice(deniedCallbacks);
+
     await deniedVoiceUi._initialMicrophoneCheckPromise.catch(() => {});
-    await new Promise(resolve => setTimeout(resolve, 10));
-    
-    expect(deniedCallbacks.onError).toHaveBeenCalledTimes(0); 
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    expect(deniedCallbacks.onError).toHaveBeenCalledTimes(0);
     expect(deniedVoiceUi.microphoneAllowed).toBe(false);
-    
+
     // Get the new instance created by deniedVoiceUi
     const deniedInstance = MockSpeechRecognition.mock.instances[0];
-    deniedInstance.start.mockClear(); 
+    deniedInstance.start.mockClear();
 
     // Attempt to start recognition, which should fail early
     deniedVoiceUi.start();
-    
-    expect(deniedInstance.start).not.toHaveBeenCalled(); 
+
+    expect(deniedInstance.start).not.toHaveBeenCalled();
     expect(deniedVoiceUi.isListening).toBe(false);
   });
-  
+
   test('should process fill input with quotes', async () => {
     document.body.innerHTML = '<input id="item-name" name="item name" value="" />';
     await voiceUi.start();
-    
+
     recognitionInstance._fireResult('fill item name with "apple sauce"');
     await Promise.resolve();
 
     expect(document.getElementById('item-name').value).toBe('apple sauce');
   });
-  
+
   test('should process fill input when value is also a field name', async () => {
     document.body.innerHTML = '<input id="name" name="name" value="" />';
     await voiceUi.start();
@@ -323,21 +343,21 @@ describe('JSVoice Library Core Functionality', () => {
     const optionCommandAction = jest.fn();
     const initialOptions = {
       commands: {
-        'option command': optionCommandAction 
+        'option command': optionCommandAction,
       },
       onCommandRecognized: jest.fn(),
-      onStatusChange: jest.fn()
+      onStatusChange: jest.fn(),
     };
 
     const optionVoiceUi = new JSVoice(initialOptions);
     await optionVoiceUi._initialMicrophoneCheckPromise;
-    await new Promise(resolve => setTimeout(resolve, 10));
+    await new Promise((resolve) => setTimeout(resolve, 10));
 
     await optionVoiceUi.start();
-    
+
     // Get the instance created for this specific VoiceUI instance
     const optionRecognitionInstance = MockSpeechRecognition.mock.instances[0];
-    optionRecognitionInstance.start.mockClear(); 
+    optionRecognitionInstance.start.mockClear();
 
     optionRecognitionInstance._fireResult('option command');
     await Promise.resolve();

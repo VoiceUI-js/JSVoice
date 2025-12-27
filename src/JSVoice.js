@@ -40,9 +40,14 @@ class JSVoice {
    */
   constructor(options = {}) {
     if (!JSVoice.isApiSupported) {
-      const error = new Error("Web Speech API not supported by this browser. Please use Chrome or Edge.");
-      console.warn("[JSVoice]", error.message);
-      this._callCallback('onStatusChange', "Voice commands not supported by your browser. Try Chrome or Edge.");
+      const error = new Error(
+        'Web Speech API not supported by this browser. Please use Chrome or Edge.'
+      );
+      console.warn('[JSVoice]', error.message);
+      this._callCallback(
+        'onStatusChange',
+        'Voice commands not supported by your browser. Try Chrome or Edge.'
+      );
       this._callCallback('onError', error);
       return;
     }
@@ -69,7 +74,7 @@ class JSVoice {
       onStatusChange: () => {},
       ...options,
     };
-    
+
     // If wakeWord is set, force continuous listening
     if (this.options.wakeWord) {
       this.options.continuous = true;
@@ -87,8 +92,8 @@ class JSVoice {
       _wakeWordModeActive: !!this.options.wakeWord,
       _isStoppingIntentionally: false, // Flag to indicate an intentional stop (e.g., from speak() or JSVoice.stop())
     };
-    
-    this._currentVoiceFeedback = "Initializing voice commands...";
+
+    this._currentVoiceFeedback = 'Initializing voice commands...';
     this._commands = {};
     this._patternCommands = [];
     this._wakeWordCommandTimer = null;
@@ -99,9 +104,9 @@ class JSVoice {
     }
     // Process initial pattern commands (use addPatternCommand to ensure cleaning/storage)
     for (const patternCmd of this.options.patternCommands) {
-        this.addPatternCommand(patternCmd.pattern, patternCmd.callback);
+      this.addPatternCommand(patternCmd.pattern, patternCmd.callback);
     }
-    
+
     // Initialize Recognition Manager
     this.recognition = initRecognition(
       this.options,
@@ -111,18 +116,18 @@ class JSVoice {
       this._startRecognitionInternal.bind(this),
       this._state
     );
-    
+
     // Initial microphone check
-    this._initialMicrophoneCheckPromise = this._checkMicrophonePermission().catch(e => {
+    this._initialMicrophoneCheckPromise = this._checkMicrophonePermission().catch((e) => {
       if (e && e.name === 'NotAllowedError') return;
       // Other errors are handled and status is updated inside checkMicrophonePermission
     });
-    
+
     // Initial status update based on wake word configuration
     this._updateStatus(
-        this._state._wakeWordModeActive 
-        ? `Voice commands ready. Waiting for wake word "${this.options.wakeWord}"...` 
-        : "Voice commands ready. Click mic to start."
+      this._state._wakeWordModeActive
+        ? `Voice commands ready. Waiting for wake word "${this.options.wakeWord}"...`
+        : 'Voice commands ready. Click mic to start.'
     );
   }
 
@@ -130,13 +135,13 @@ class JSVoice {
   _callCallback(callbackName, ...args) {
     callCallback(this.options, callbackName, ...args);
   }
-  
+
   /** Updates the internal status and calls the status change callback. */
   _updateStatus(message) {
     this._currentVoiceFeedback = message;
     this._callCallback('onStatusChange', message);
   }
-  
+
   /** Imports and runs the mic permission check from RecognitionManager. */
   async _checkMicrophonePermission() {
     return checkMicrophonePermission(
@@ -145,8 +150,8 @@ class JSVoice {
       this._state
     );
   }
-  
-  /** 
+
+  /**
    * Handles incoming speech results, including wake word detection.
    * @param {string} rawTranscript - The raw transcript from speech recognition.
    */
@@ -160,8 +165,10 @@ class JSVoice {
         if (cleanedTranscript.includes(this.options.wakeWord)) {
           this._state._awaitingCommand = true; // Switch to command-listening mode
           this._callCallback('onWakeWordDetected', this.options.wakeWord);
-          this._updateStatus(`Wake word "${this.options.wakeWord}" detected! Listening for command...`);
-          
+          this._updateStatus(
+            `Wake word "${this.options.wakeWord}" detected! Listening for command...`
+          );
+
           // Set/reset a timeout to revert to wake word listening if no command is given
           if (this._wakeWordCommandTimer) clearTimeout(this._wakeWordCommandTimer);
           this._wakeWordCommandTimer = setTimeout(() => {
@@ -192,12 +199,12 @@ class JSVoice {
       this._callCallback.bind(this),
       this.speak.bind(this)
     );
-    
+
     // If no command was handled and not in wake word mode, and still listening, indicate general listening
     if (!commandHandled && !this._state._wakeWordModeActive && this._state._isListening) {
-      this._updateStatus("Listening for commands...");
+      this._updateStatus('Listening for commands...');
     }
-    
+
     return commandHandled;
   }
 
@@ -209,20 +216,20 @@ class JSVoice {
       this._wakeWordCommandTimer = null;
     }
     // FIXED: Removed unused audio analyser variables that were placeholders
-    // this._audioContext = null; 
+    // this._audioContext = null;
     // this._analyser = null;
     // this._micStream = null;
     // this._amplitudeCallback = null;
     // this._amplitudeRafId = null;
     // this._amplitudeOptions = null;
-    
+
     if (this._state._isListening) {
-        this._updateStatus(`Reverted to wake word mode. Waiting for "${this.options.wakeWord}"...`);
+      this._updateStatus(`Reverted to wake word mode. Waiting for "${this.options.wakeWord}"...`);
     } else {
-        this._updateStatus("Voice commands off. Click mic to start.");
+      this._updateStatus('Voice commands off. Click mic to start.');
     }
   }
-  
+
   /** Internal method to safely start recognition. */
   _startRecognitionInternal() {
     if (this.recognition && !this._state._isListening) {
@@ -232,49 +239,49 @@ class JSVoice {
       } catch (e) {
         if (e.name === 'InvalidStateError') {
           this._state._isListening = true;
-          this._updateStatus("Already listening for commands.");
+          this._updateStatus('Already listening for commands.');
           return true;
         }
-        console.error("[JSVoice] Error attempting to start SpeechRecognition:", e);
+        console.error('[JSVoice] Error attempting to start SpeechRecognition:', e);
         this._callCallback('onError', e);
         this._updateStatus(`Error starting voice: ${e.message}`);
         this._state._isListening = false;
         return false;
       }
     } else if (this._state._isListening) {
-      this._updateStatus("Already listening for commands.");
+      this._updateStatus('Already listening for commands.');
       return true;
     }
     return false;
   }
-  
+
   /**
    * Starts speech recognition.
    */
   async start() {
     if (!JSVoice.isApiSupported) {
-      this._updateStatus("Voice commands not supported by your browser.");
+      this._updateStatus('Voice commands not supported by your browser.');
       return false;
     }
-    
+
     await this._initialMicrophoneCheckPromise;
 
     if (!this._state._microphoneAllowed) {
-      this._updateStatus("Microphone access denied. Cannot start voice commands.");
+      this._updateStatus('Microphone access denied. Cannot start voice commands.');
       return false;
     }
-    
+
     // If wake word mode is active, ensure we update status correctly on manual start
     if (this._state._wakeWordModeActive) {
-        this._state._awaitingCommand = false; // Start fresh in wake word mode
-        this._updateStatus(`Waiting for wake word "${this.options.wakeWord}"...`);
+      this._state._awaitingCommand = false; // Start fresh in wake word mode
+      this._updateStatus(`Waiting for wake word "${this.options.wakeWord}"...`);
     } else {
-        this._updateStatus("Listening for commands...");
+      this._updateStatus('Listening for commands...');
     }
 
     return this._startRecognitionInternal();
   }
-  
+
   /**
    * Stops speech recognition.
    */
@@ -282,14 +289,14 @@ class JSVoice {
     if (this.recognition && this._state._isListening) {
       this._state._isStoppingIntentionally = true; // NEW: Set flag before stopping
       this.recognition.stop(); // This will trigger onend (and possibly onerror)
-      
+
       // onend in RecognitionManager will now handle resetting _isStoppingIntentionally and status.
       // We explicitly don't reset the flag here, as onend will be the definitive resetter.
     } else {
-        this._updateStatus("Voice commands off.");
+      this._updateStatus('Voice commands off.');
     }
   }
-  
+
   /**
    * Toggles speech recognition on/off.
    */
@@ -300,7 +307,7 @@ class JSVoice {
       this.start();
     }
   }
-  
+
   /**
    * Makes the browser speak a given text.
    * If speech recognition is active, it will be temporarily stopped
@@ -310,15 +317,15 @@ class JSVoice {
    */
   speak(text, lang = this.options.lang) {
     if (!text || typeof text !== 'string') {
-      const error = new Error("Speech text must be a non-empty string.");
-      console.error("[JSVoice]", error.message);
+      const error = new Error('Speech text must be a non-empty string.');
+      console.error('[JSVoice]', error.message);
       this._callCallback('onError', error);
       return;
     }
 
     if (!this.speechSynthesis || !window.SpeechSynthesisUtterance) {
-      const error = new Error("SpeechSynthesis not supported by this browser.");
-      console.warn("[JSVoice]", error.message);
+      const error = new Error('SpeechSynthesis not supported by this browser.');
+      console.warn('[JSVoice]', error.message);
       this._callCallback('onError', error);
       return;
     }
@@ -327,13 +334,15 @@ class JSVoice {
     let restartRecognition = false;
 
     if (wasListening && this._state._microphoneAllowed) {
-        this._state._isStoppingIntentionally = true; // NEW: Set flag before stopping
-        this.recognition.stop(); 
-        restartRecognition = true;
+      this._state._isStoppingIntentionally = true; // NEW: Set flag before stopping
+      this.recognition.stop();
+      restartRecognition = true;
     } else if (wasListening && !this._state._microphoneAllowed) {
-        console.warn("[JSVoice] Cannot temporarily stop recognition for speak: Microphone not allowed.");
+      console.warn(
+        '[JSVoice] Cannot temporarily stop recognition for speak: Microphone not allowed.'
+      );
     }
-    
+
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = lang;
 
@@ -343,31 +352,31 @@ class JSVoice {
         this._startRecognitionInternal();
         // Restore appropriate status
         if (this._state._wakeWordModeActive) {
-            this._updateStatus(
-                this._state._awaitingCommand 
-                ? `Listening for command... (after wake word)` 
-                : `Waiting for wake word "${this.options.wakeWord}"...`
-            );
+          this._updateStatus(
+            this._state._awaitingCommand
+              ? `Listening for command... (after wake word)`
+              : `Waiting for wake word "${this.options.wakeWord}"...`
+          );
         } else {
-            this._updateStatus("Listening for commands.");
+          this._updateStatus('Listening for commands.');
         }
       } else if (!this._state._microphoneAllowed) {
-          this._updateStatus("Microphone access needed for voice commands.");
+        this._updateStatus('Microphone access needed for voice commands.');
       } else if (!wasListening) {
-          this._updateStatus("Voice commands ready. Click mic to start.");
+        this._updateStatus('Voice commands ready. Click mic to start.');
       }
     };
 
     utterance.onend = finalizeSpeak;
     utterance.onerror = (event) => {
-      console.error("[JSVoice] SpeechSynthesis Error:", event);
+      console.error('[JSVoice] SpeechSynthesis Error:', event);
       this._callCallback('onError', new Error(`SpeechSynthesis failed: ${event.error}`));
       finalizeSpeak();
     };
 
     this.speechSynthesis.speak(utterance);
   }
-  
+
   /**
    * Registers a custom voice command based on an exact phrase.
    * @param {string} phrase - The exact phrase to match for the command.
@@ -375,26 +384,26 @@ class JSVoice {
    */
   addCommand(phrase, callback) {
     if (typeof phrase !== 'string' || phrase.trim() === '') {
-      const error = new Error("Command phrase must be a non-empty string.");
-      console.error("[JSVoice] addCommand:", error.message);
+      const error = new Error('Command phrase must be a non-empty string.');
+      console.error('[JSVoice] addCommand:', error.message);
       this._callCallback('onError', error);
       return;
     }
-    
+
     if (typeof callback !== 'function') {
-      const error = new Error("Command callback must be a function.");
-      console.error("[JSVoice] addCommand:", error.message);
+      const error = new Error('Command callback must be a function.');
+      console.error('[JSVoice] addCommand:', error.message);
       this._callCallback('onError', error);
       return;
     }
-    
+
     const cleanedPhrase = cleanText(phrase);
     if (this._commands.hasOwnProperty(cleanedPhrase)) {
-        console.warn(`[JSVoice] Overwriting existing exact command: "${phrase}"`);
+      console.warn(`[JSVoice] Overwriting existing exact command: "${phrase}"`);
     }
     this._commands[cleanedPhrase] = callback;
   }
-  
+
   /**
    * Removes a previously registered exact phrase voice command.
    * @param {string} phrase - The phrase of the command to remove.
@@ -418,26 +427,28 @@ class JSVoice {
    */
   addPatternCommand(pattern, callback) {
     if (typeof pattern !== 'string' || pattern.trim() === '') {
-      const error = new Error("Pattern must be a non-empty string.");
-      console.error("[JSVoice] addPatternCommand:", error.message);
+      const error = new Error('Pattern must be a non-empty string.');
+      console.error('[JSVoice] addPatternCommand:', error.message);
       this._callCallback('onError', error);
       return;
     }
-    
+
     if (typeof callback !== 'function') {
-      const error = new Error("Pattern callback must be a function.");
-      console.error("[JSVoice] addPatternCommand:", error.message);
+      const error = new Error('Pattern callback must be a function.');
+      console.error('[JSVoice] addPatternCommand:', error.message);
       this._callCallback('onError', error);
       return;
     }
-    
+
     const cleanedPattern = cleanText(pattern);
-    const existingIndex = this._patternCommands.findIndex(cmd => cmd.cleanedPattern === cleanedPattern);
+    const existingIndex = this._patternCommands.findIndex(
+      (cmd) => cmd.cleanedPattern === cleanedPattern
+    );
     if (existingIndex > -1) {
-        console.warn(`[JSVoice] Overwriting existing pattern command: "${pattern}"`);
-        this._patternCommands[existingIndex] = { pattern, cleanedPattern, callback };
+      console.warn(`[JSVoice] Overwriting existing pattern command: "${pattern}"`);
+      this._patternCommands[existingIndex] = { pattern, cleanedPattern, callback };
     } else {
-        this._patternCommands.push({ pattern, cleanedPattern, callback });
+      this._patternCommands.push({ pattern, cleanedPattern, callback });
     }
   }
 
@@ -449,22 +460,24 @@ class JSVoice {
   removePatternCommand(pattern) {
     const cleanedPattern = cleanText(pattern);
     const initialLength = this._patternCommands.length;
-    this._patternCommands = this._patternCommands.filter(cmd => cmd.cleanedPattern !== cleanedPattern);
+    this._patternCommands = this._patternCommands.filter(
+      (cmd) => cmd.cleanedPattern !== cleanedPattern
+    );
     return this._patternCommands.length < initialLength;
   }
-  
+
   get isListening() {
     return this._state._isListening;
   }
-  
+
   get microphoneAllowed() {
     return this._state._microphoneAllowed;
   }
-  
+
   get isApiSupported() {
-    return JSVoice.isApiSupported; 
+    return JSVoice.isApiSupported;
   }
-  
+
   get voiceFeedback() {
     return this._currentVoiceFeedback;
   }
@@ -484,22 +497,25 @@ class JSVoice {
    */
   setOption(key, value) {
     if (!key || typeof key !== 'string') {
-      const error = new Error("Option key must be a non-empty string.");
-      console.error("[JSVoice] setOption:", error.message);
+      const error = new Error('Option key must be a non-empty string.');
+      console.error('[JSVoice] setOption:', error.message);
       this._callCallback('onError', error);
       return;
     }
-    
+
     if (key in this.options) {
       this.options[key] = value;
-      
+
       // Apply changes for options that affect recognition
-      if (this.recognition && (key === 'continuous' || key === 'interimResults' || key === 'lang')) {
+      if (
+        this.recognition &&
+        (key === 'continuous' || key === 'interimResults' || key === 'lang')
+      ) {
         this.recognition.continuous = this.options.continuous;
         this.recognition.interimResults = this.options.interimResults;
         this.recognition.lang = this.options.lang;
       }
-      
+
       // Handle wake word changes
       if (key === 'wakeWord') {
         this.options.wakeWord = value ? cleanText(value) : null;
@@ -510,7 +526,7 @@ class JSVoice {
       }
     } else {
       const error = new Error(`Unknown option: ${key}`);
-      console.warn("[JSVoice] setOption:", error.message);
+      console.warn('[JSVoice] setOption:', error.message);
       this._callCallback('onError', error);
     }
   }

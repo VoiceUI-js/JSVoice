@@ -14,33 +14,52 @@ import { handleBuiltInActions } from './BuiltInActions.js';
  * @param {Function} jsVoiceSpeakMethod - The JSVoice instance's speak method, passed for read actions.
  * @returns {Promise<boolean>} True if a command was handled, false otherwise.
  */
-export async function processCommand(rawTranscript, exactCommands, patternCommands, updateStatus, callCallback, jsVoiceSpeakMethod) {
+export async function processCommand(
+  rawTranscript,
+  exactCommands,
+  patternCommands,
+  updateStatus,
+  callCallback,
+  jsVoiceSpeakMethod
+) {
   const s = cleanText(rawTranscript);
 
   // 1. Check for pattern-based commands first (more flexible, higher priority)
   for (const cmd of patternCommands) {
     // Generate regex from pattern: {argName} becomes a non-greedy capturing group (.+?)
     const patternRegex = new RegExp(
-        "^" + cmd.cleanedPattern.replace(/{(\w+)}/g, '(.+?)') + "$", 
-        "i" // Case-insensitive
+      '^' + cmd.cleanedPattern.replace(/{(\w+)}/g, '(.+?)') + '$',
+      'i' // Case-insensitive
     );
     const match = s.match(patternRegex);
     if (match) {
       try {
-        const argNames = (cmd.pattern.match(/{(\w+)}/g) || []).map(arg => arg.slice(1, -1)); // Extract arg names from original pattern
+        const argNames = (cmd.pattern.match(/{(\w+)}/g) || []).map((arg) => arg.slice(1, -1)); // Extract arg names from original pattern
         const extractedArgs = {};
-        match.slice(1).forEach((val, index) => { // Skip full match, iterate through capture groups
-            if (argNames[index]) {
-                extractedArgs[argNames[index]] = val;
-            } else {
-                // Fallback for unnamed groups if pattern parsing is unexpected.
-                // With {name} syntax, argNames should match capture groups.
-                extractedArgs[`arg${index + 1}`] = val; 
-            }
+        match.slice(1).forEach((val, index) => {
+          // Skip full match, iterate through capture groups
+          if (argNames[index]) {
+            extractedArgs[argNames[index]] = val;
+          } else {
+            // Fallback for unnamed groups if pattern parsing is unexpected.
+            // With {name} syntax, argNames should match capture groups.
+            extractedArgs[`arg${index + 1}`] = val;
+          }
         });
-        
-        const commandResult = await cmd.callback(extractedArgs, rawTranscript, s, jsVoiceSpeakMethod);
-        callCallback('onCommandRecognized', cmd.pattern, rawTranscript, commandResult, extractedArgs); // Pass extractedArgs
+
+        const commandResult = await cmd.callback(
+          extractedArgs,
+          rawTranscript,
+          s,
+          jsVoiceSpeakMethod
+        );
+        callCallback(
+          'onCommandRecognized',
+          cmd.pattern,
+          rawTranscript,
+          commandResult,
+          extractedArgs
+        ); // Pass extractedArgs
         updateStatus(`Pattern command: "${cmd.pattern}" processed.`);
         return true;
       } catch (e) {
@@ -54,7 +73,8 @@ export async function processCommand(rawTranscript, exactCommands, patternComman
 
   // 2. Check for exact phrase user-defined commands
   for (const cleanedCommandPhrase in exactCommands) {
-    if (s.includes(cleanedCommandPhrase)) { // Use includes for flexibility
+    if (s.includes(cleanedCommandPhrase)) {
+      // Use includes for flexibility
       try {
         const actionCallback = exactCommands[cleanedCommandPhrase];
         const commandResult = await actionCallback(rawTranscript, s, jsVoiceSpeakMethod); // Pass speak method
@@ -63,7 +83,10 @@ export async function processCommand(rawTranscript, exactCommands, patternComman
         return true;
       } catch (e) {
         console.error(`[JSVoice] Error executing command "${cleanedCommandPhrase}":`, e);
-        callCallback('onError', new Error(`Command "${cleanedCommandPhrase}" failed: ${e.message}`));
+        callCallback(
+          'onError',
+          new Error(`Command "${cleanedCommandPhrase}" failed: ${e.message}`)
+        );
         updateStatus(`Error with command "${cleanedCommandPhrase}".`);
         return true;
       }
@@ -71,7 +94,15 @@ export async function processCommand(rawTranscript, exactCommands, patternComman
   }
 
   // 3. Handle built-in, generic DOM manipulation commands
-  if (handleBuiltInActions(rawTranscript, s, updateStatus, (name, ...args) => callCallback(name, ...args), jsVoiceSpeakMethod)) {
+  if (
+    handleBuiltInActions(
+      rawTranscript,
+      s,
+      updateStatus,
+      (name, ...args) => callCallback(name, ...args),
+      jsVoiceSpeakMethod
+    )
+  ) {
     return true;
   }
 

@@ -24,13 +24,13 @@ export default {
     {
       file: pkg.browser,
       format: 'umd',
-      name: 'VoiceUI',
+      name: 'JSVoice',
       sourcemap: true,
     },
     {
       file: pkg.unpkg,
       format: 'umd',
-      name: 'VoiceUI',
+      name: 'JSVoice',
       sourcemap: true,
       plugins: [terser()],
     },

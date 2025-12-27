@@ -1,19 +1,19 @@
 {
   "name": "jsvoice",
   "version": "0.2.1",
-  "description": "A lightweight JavaScript library for adding voice command and synthesis capabilities to web applications using the Web Speech API.",
+  "description": "Modern JavaScript voice command library with speech recognition, synthesis, pattern matching, wake word detection, and real-time audio visualization. Zero dependencies, TypeScript ready, perfect for accessibility and voice-first UIs.",
   "main": "dist/voice-ui.cjs.js",
   "module": "dist/voice-ui.esm.js",
   "unpkg": "dist/voice-ui.umd.min.js",
   "browser": "dist/voice-ui.umd.js",
-  "types": "dist/index.d.ts",
+  "types": "src/index.d.ts",
   "type": "module",
   "exports": {
     ".": {
       "import": "./dist/voice-ui.esm.js",
       "require": "./dist/voice-ui.cjs.js",
       "browser": "./dist/voice-ui.umd.js",
-      "types": "./dist/index.d.ts"
+      "types": "./src/index.d.ts"
     }
   },
   "scripts": {
@@ -22,23 +22,62 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "lint": "eslint src/",
+    "lint": "eslint src/ test/",
+    "lint:fix": "eslint src/ test/ --fix",
+    "format": "prettier --write \"src/**/*.js\" \"test/**/*.js\" \"examples/**/*.{html,js}\"",
+    "format:check": "prettier --check \"src/**/*.js\" \"test/**/*.js\"",
     "prepare": "npm run build"
   },
   "files": [
-  "dist/",       
-  "src/modules/"
-],
+    "dist/",
+    "src/",
+    "examples/",
+    "DETAILED_DOCUMENTATION.md",
+    "README.md",
+    "LICENSE"
+  ],
   "keywords": [
     "voice",
-    "ui",
+    "voice-commands",
+    "voice-control",
+    "voice-recognition",
     "speech",
-    "recognition",
-    "synthesis",
-    "web speech api",
+    "speech-recognition",
+    "speech-synthesis",
+    "text-to-speech",
+    "tts",
+    "stt",
+    "web-speech-api",
+    "voice-ui",
+    "voice-interface",
+    "accessibility",
+    "a11y",
+    "hands-free",
+    "wake-word",
+    "pattern-matching",
+    "audio-visualization",
+    "waveform",
+    "amplitude",
     "javascript",
-    "accessibility"
+    "typescript",
+    "browser",
+    "web",
+    "frontend",
+    "ui",
+    "ux",
+    "pwa",
+    "progressive-web-app",
+    "zero-dependencies",
+    "lightweight"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/VoiceUI-js/VoiceUI.git"
+  },
+  "homepage": "https://github.com/VoiceUI-js/VoiceUI#readme",
+  "bugs": {
+    "url": "https://github.com/VoiceUI-js/VoiceUI/issues"
+  },
   "author": "JSVoice Contributors",
   "license": "MIT",
   "devDependencies": {
@@ -52,6 +91,7 @@
     "eslint": "^8.56.0",
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
+    "prettier": "^3.7.4",
     "rollup": "^4.9.6"
   }
 }

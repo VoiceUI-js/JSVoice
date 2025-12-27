@@ -37,7 +37,9 @@ export function cleanText(text) {
  * @returns {boolean}
  */
 function isValidInputField(element) {
-  if (!element) return false;
+  if (!element) {
+    return false;
+  }
   const tagName = element.tagName;
   // Ensure it's a field the user can type into or select from
   return tagName === 'INPUT' || tagName === 'TEXTAREA' || tagName === 'SELECT';
@@ -65,7 +67,8 @@ export function findInputField(rawIdentifier) {
   // 1. data-voice-command-fill attribute (most explicit voice control, exact match)
   for (const field of allPotentialFields) {
     const dataCommand = cleanText(field.getAttribute('data-voice-command-fill') || '');
-    if (dataCommand === identifier) { // Exact match for explicit command
+    if (dataCommand === identifier) {
+      // Exact match for explicit command
       return { success: true, element: field };
     }
   }
@@ -74,23 +77,30 @@ export function findInputField(rawIdentifier) {
   const labels = document.querySelectorAll('label');
   for (const label of labels) {
     const labelText = cleanText(label.textContent || '');
-    if (labelText === identifier) { // Exact label match
+    if (labelText === identifier) {
+      // Exact label match
       if (label.htmlFor) {
         element = document.getElementById(label.htmlFor);
-        if (isValidInputField(element)) return { success: true, element };
+        if (isValidInputField(element)) {
+          return { success: true, element };
+        }
       }
       // Check for nested input/textarea/select within the label
-      element = label.querySelector('input:not([type="hidden"]):not([type="radio"]):not([type="checkbox"]), textarea, select');
-      if (isValidInputField(element)) return { success: true, element };
+      element = label.querySelector(
+        'input:not([type="hidden"]):not([type="radio"]):not([type="checkbox"]), textarea, select'
+      );
+      if (isValidInputField(element)) {
+        return { success: true, element };
+      }
     }
   }
-  
+
   // 3. ID attribute (exact match after cleaning, and if it's a valid field)
   for (const field of allPotentialFields) {
-      const fieldId = cleanText(field.id || '');
-      if (fieldId === identifier) {
-          return { success: true, element: field };
-      }
+    const fieldId = cleanText(field.id || '');
+    if (fieldId === identifier) {
+      return { success: true, element: field };
+    }
   }
 
   // 4. Placeholder text, Aria-label, Name attribute (contains, case-insensitive after cleaning)
@@ -100,11 +110,15 @@ export function findInputField(rawIdentifier) {
     const ariaLabel = cleanText(field.getAttribute('aria-label') || '');
     const name = cleanText(field.name || '');
 
-    if (placeholder.includes(identifier) || ariaLabel.includes(identifier) || name.includes(identifier)) {
+    if (
+      placeholder.includes(identifier) ||
+      ariaLabel.includes(identifier) ||
+      name.includes(identifier)
+    ) {
       return { success: true, element: field };
     }
   }
 
   // Fallback: No element found
-  return { success: false, reason: "field not found" };
+  return { success: false, reason: 'field not found' };
 }

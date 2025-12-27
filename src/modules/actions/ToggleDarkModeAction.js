@@ -12,28 +12,28 @@ export function handleDarkMode(cleanedTranscript, updateStatus, callCallback) {
   const root = document.documentElement;
   const prev = root.dataset.theme || 'light';
 
-  if (s.includes("dark mode on")) {
-    root.dataset.theme = "dark";
-    callCallback("onActionPerformed", "darkModeOn");
-    updateStatus("Switched to dark mode.");
+  if (s.includes('dark mode on')) {
+    root.dataset.theme = 'dark';
+    callCallback('onActionPerformed', 'darkModeOn');
+    updateStatus('Switched to dark mode.');
     return true;
   }
-  if (s.includes("dark mode off") || s.includes("light mode on")) {
-    root.dataset.theme = "light";
-    callCallback("onActionPerformed", "darkModeOff");
-    updateStatus("Switched to light mode.");
+  if (s.includes('dark mode off') || s.includes('light mode on')) {
+    root.dataset.theme = 'light';
+    callCallback('onActionPerformed', 'darkModeOff');
+    updateStatus('Switched to light mode.');
     return true;
   }
-  if (s.includes("light mode off")) {
-    root.dataset.theme = "dark";
-    callCallback("onActionPerformed", "darkModeOn");
-    updateStatus("Switched to dark mode.");
+  if (s.includes('light mode off')) {
+    root.dataset.theme = 'dark';
+    callCallback('onActionPerformed', 'darkModeOn');
+    updateStatus('Switched to dark mode.');
     return true;
   }
-  if (s.includes("toggle dark mode") || s.includes("switch theme")) {
-    const next = prev === "dark" ? "light" : "dark";
+  if (s.includes('toggle dark mode') || s.includes('switch theme')) {
+    const next = prev === 'dark' ? 'light' : 'dark';
     root.dataset.theme = next;
-    callCallback("onActionPerformed", "toggleDarkMode", next);
+    callCallback('onActionPerformed', 'toggleDarkMode', next);
     updateStatus(`Switched to ${next} mode.`);
     return true;
   }

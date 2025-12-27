@@ -1,0 +1,43 @@
+# Development files
+.github/
+.vscode/
+node_modules/
+coverage/
+test/
+docs/
+
+# Config files
+.eslintrc.cjs
+.prettierrc.json
+.prettierignore
+.gitignore
+rollup.config.js
+jest.config.cjs
+babel.config.cjs
+
+# Test files
+*.test.js
+*.spec.js
+
+# Documentation (keep only essential)
+docs/
+
+# Build artifacts (will be rebuilt)
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary files
+*.tmp
+.cache/

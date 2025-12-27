@@ -20,7 +20,7 @@ for (let i = 0; i < barCount; i++) {
 // Animation loop
 function animateWave() {
   if (!isListening) {
-    bars.forEach(bar => bar.style.height = '10px');
+    bars.forEach((bar) => (bar.style.height = '10px'));
     return;
   }
   const t = Date.now() / 300;

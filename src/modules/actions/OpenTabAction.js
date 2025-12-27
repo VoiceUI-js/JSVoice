@@ -1,13 +1,13 @@
 // src/modules/actions/OpenTabAction.js
 
 const DOMAIN_MAPPINGS = {
-  google: "https://google.com",
-  github: "https://github.com",
-  youtube: "https://youtube.com",
-  facebook: "https://facebook.com",
-  twitter: "https://twitter.com",
-  linkedin: "https://linkedin.com",
-  chatGPT: "https://chat.openai.com",
+  google: 'https://google.com',
+  github: 'https://github.com',
+  youtube: 'https://youtube.com',
+  facebook: 'https://facebook.com',
+  twitter: 'https://twitter.com',
+  linkedin: 'https://linkedin.com',
+  chatGPT: 'https://chat.openai.com',
 };
 
 function getUrlFromSite(site) {
@@ -29,16 +29,16 @@ function getUrlFromSite(site) {
 export function OpenTabAction(rawTranscript, cleanedTranscript, updateStatus, callCallback) {
   const phrase = cleanedTranscript.toLowerCase().trim();
 
-  if (phrase === "open new tab") {
-    window.open("about:blank", "_blank");
-    updateStatus && updateStatus("Opened a new tab.");
+  if (phrase === 'open new tab') {
+    window.open('about:blank', '_blank');
+    updateStatus && updateStatus('Opened a new tab.');
     callCallback && callCallback();
     return true;
   }
 
-  if (phrase === "open google") {
-    window.open(DOMAIN_MAPPINGS["google"], "_blank");
-    updateStatus && updateStatus("Opened Google in new tab.");
+  if (phrase === 'open google') {
+    window.open(DOMAIN_MAPPINGS['google'], '_blank');
+    updateStatus && updateStatus('Opened Google in new tab.');
     callCallback && callCallback();
     return true;
   }
@@ -47,7 +47,7 @@ export function OpenTabAction(rawTranscript, cleanedTranscript, updateStatus, ca
   if (goToMatch) {
     const site = goToMatch[1];
     const url = getUrlFromSite(site);
-    window.open(url, "_blank");
+    window.open(url, '_blank');
     updateStatus && updateStatus(`Opened ${site} in new tab.`);
     callCallback && callCallback();
     return true;

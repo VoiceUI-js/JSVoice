@@ -28,8 +28,13 @@ export function handleFillInput(rawTranscript, updateStatus, callCallback) {
       targetInput.value = valueToType;
       targetInput.dispatchEvent(new Event('input', { bubbles: true })); // Simulate user input
       targetInput.dispatchEvent(new Event('change', { bubbles: true })); // Simulate blur/change event
-      callCallback('onActionPerformed', 'fillInput', { field: fieldIdentifierCleaned, value: valueToType, element: targetInput });
-      updateStatus(`Filled "${fieldIdentifierCleaned}" with "${valueToType}".`); return true;
+      callCallback('onActionPerformed', 'fillInput', {
+        field: fieldIdentifierCleaned,
+        value: valueToType,
+        element: targetInput,
+      });
+      updateStatus(`Filled "${fieldIdentifierCleaned}" with "${valueToType}".`);
+      return true;
     }
     updateStatus(`Could not find input field "${fieldIdentifierCleaned}".`);
     return true;

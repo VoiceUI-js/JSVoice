@@ -31,44 +31,52 @@ class _ActualMockSpeechRecognitionClass {
     this.onend = null;
     this.onresult = null;
     this.onerror = null;
-    this._isStarted = false; 
+    this._isStarted = false;
 
     // CRITICAL: Ensure these are jest.fn() for call tracking
     this.start = jest.fn(() => {
       this._isStarted = true;
-      if (this.onstart) this.onstart();
+      if (this.onstart) {
+        this.onstart();
+      }
     });
-    
+
     this.stop = jest.fn(() => {
       this._isStarted = false;
-      if (this.onend) this.onend();
+      if (this.onend) {
+        this.onend();
+      }
     });
-    
+
     this.abort = jest.fn(() => {
       this._isStarted = false;
-      if (this.onend) this.onend();
+      if (this.onend) {
+        this.onend();
+      }
     });
 
     // --- TEST UTILITY METHODS (Accessed via recognitionInstance._fireResult) ---
     this._fireResult = (transcript) => {
       if (!this._isStarted) {
-        return; 
+        return;
       }
       if (this.onresult) {
         const event = new MockSpeechRecognitionEvent('result', {
           results: [[{ transcript: transcript, confidence: 1.0 }]],
-          resultIndex: 0
+          resultIndex: 0,
         });
         this.onresult(event);
       }
       this._isStarted = false;
-      if (this.onend) this.onend();
+      if (this.onend) {
+        this.onend();
+      }
     };
-    
+
     this._fireError = (errorType, message) => {
-        if (this.onerror) {
-            this.onerror({ error: errorType, message: message });
-        }
+      if (this.onerror) {
+        this.onerror({ error: errorType, message: message });
+      }
     };
   }
 }
@@ -90,18 +98,17 @@ const mockSpeechSynthesis = {
 };
 
 // 3. Mock for SpeechSynthesis Utterance (Fixes the undefined 'text' property in the test)
-const MockSpeechSynthesisUtterance = jest.fn(function(text) {
-    this.text = text; 
-    this.lang = 'en-US'; 
-    this.onend = null;
-    this.onerror = null;
+const MockSpeechSynthesisUtterance = jest.fn(function (text) {
+  this.text = text;
+  this.lang = 'en-US';
+  this.onend = null;
+  this.onerror = null;
 });
 
 // 4. Mock for MediaDevices (Microphone)
 const mockMediaDevices = {
   getUserMedia: jest.fn(() => Promise.resolve(new MockMediaStream())),
 };
-
 
 // --- GLOBAL BINDING ---
 
@@ -130,14 +137,13 @@ Object.defineProperty(navigator, 'mediaDevices', {
   value: mockMediaDevices,
 });
 
-
 // --- RESET MOCKS BEFORE EACH TEST ---
 
 beforeEach(() => {
   jest.clearAllMocks();
 
   // Reset internal state for all tracked SpeechRecognition instances
-  mockSpeechRecognitionInstances.forEach(instance => {
+  mockSpeechRecognitionInstances.forEach((instance) => {
     instance._isStarted = false;
     instance.onstart = null;
     instance.onend = null;
@@ -150,7 +156,7 @@ beforeEach(() => {
 
   document.body.style.zoom = '1';
   document.body.innerHTML = '';
-  delete global.mockButtonClick; 
+  delete global.mockButtonClick;
 
   jest.spyOn(console, 'warn').mockImplementation(() => {});
   jest.spyOn(console, 'error').mockImplementation(() => {});

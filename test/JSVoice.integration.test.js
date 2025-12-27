@@ -39,9 +39,9 @@ describe('JSVoice Integration Tests', () => {
     const customOptions = {
       lang: 'es-ES',
       continuous: false,
-      onStatusChange: jest.fn()
+      onStatusChange: jest.fn(),
     };
-    
+
     voice = new JSVoice(customOptions);
     expect(voice.options.lang).toBe('es-ES');
     expect(voice.options.continuous).toBe(false);
@@ -50,7 +50,7 @@ describe('JSVoice Integration Tests', () => {
   test('should add and remove custom commands', () => {
     voice = new JSVoice();
     const testCallback = jest.fn();
-    
+
     // Add command
     voice.addCommand('test command', testCallback);
     expect(voice.removeCommand('test command')).toBe(true);
@@ -60,7 +60,7 @@ describe('JSVoice Integration Tests', () => {
   test('should add and remove pattern commands', () => {
     voice = new JSVoice();
     const testCallback = jest.fn();
-    
+
     // Add pattern command
     voice.addPatternCommand('change {property} to {value}', testCallback);
     expect(voice.removePatternCommand('change {property} to {value}')).toBe(true);
@@ -69,21 +69,21 @@ describe('JSVoice Integration Tests', () => {
 
   test('should update options using setOption', () => {
     voice = new JSVoice();
-    
+
     voice.setOption('lang', 'fr-FR');
     expect(voice.options.lang).toBe('fr-FR');
-    
+
     voice.setOption('continuous', false);
     expect(voice.options.continuous).toBe(false);
   });
 
   test('should handle invalid setOption calls', () => {
     voice = new JSVoice(mockCallbacks);
-    
+
     // Invalid key
     voice.setOption('', 'value');
     expect(mockCallbacks.onError).toHaveBeenCalledWith(expect.any(Error));
-    
+
     // Invalid key type
     voice.setOption(null, 'value');
     expect(mockCallbacks.onError).toHaveBeenCalledWith(expect.any(Error));
@@ -91,11 +91,11 @@ describe('JSVoice Integration Tests', () => {
 
   test('should handle invalid addCommand calls', () => {
     voice = new JSVoice(mockCallbacks);
-    
+
     // Invalid phrase
     voice.addCommand('', jest.fn());
     expect(mockCallbacks.onError).toHaveBeenCalledWith(expect.any(Error));
-    
+
     // Invalid callback
     voice.addCommand('test', 'not a function');
     expect(mockCallbacks.onError).toHaveBeenCalledWith(expect.any(Error));
@@ -103,11 +103,11 @@ describe('JSVoice Integration Tests', () => {
 
   test('should handle invalid addPatternCommand calls', () => {
     voice = new JSVoice(mockCallbacks);
-    
+
     // Invalid pattern
     voice.addPatternCommand('', jest.fn());
     expect(mockCallbacks.onError).toHaveBeenCalledWith(expect.any(Error));
-    
+
     // Invalid callback
     voice.addPatternCommand('test {param}', 'not a function');
     expect(mockCallbacks.onError).toHaveBeenCalledWith(expect.any(Error));
@@ -115,18 +115,18 @@ describe('JSVoice Integration Tests', () => {
 
   test('should handle invalid speak calls', () => {
     voice = new JSVoice(mockCallbacks);
-    
+
     // Invalid text
     voice.speak('');
     expect(mockCallbacks.onError).toHaveBeenCalledWith(expect.any(Error));
-    
+
     voice.speak(null);
     expect(mockCallbacks.onError).toHaveBeenCalledWith(expect.any(Error));
   });
 
   test('should provide correct getter values', () => {
     voice = new JSVoice();
-    
+
     expect(typeof voice.isListening).toBe('boolean');
     expect(typeof voice.microphoneAllowed).toBe('boolean');
     expect(typeof voice.isApiSupported).toBe('boolean');
@@ -138,11 +138,10 @@ describe('JSVoice Integration Tests', () => {
   test('should handle wake word mode', () => {
     voice = new JSVoice({
       wakeWord: 'hey assistant',
-      onStatusChange: jest.fn()
+      onStatusChange: jest.fn(),
     });
-    
+
     expect(voice.isWakeWordModeActive).toBe(true);
     expect(voice.options.continuous).toBe(true); // Should be forced to true
   });
 });
-

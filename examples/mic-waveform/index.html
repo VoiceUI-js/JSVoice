@@ -1,69 +1,73 @@
 <!doctype html>
 <html lang="en">
-
-<head>
+  <head>
     <meta charset="utf-8" />
     <title>JSVoice Demo — Waveform Visual</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
-        body {
-            font-family: ui-sans-serif, system-ui;
-            padding: 24px;
-            background: #f7f7fb;
+      body {
+        font-family: ui-sans-serif, system-ui;
+        padding: 24px;
+        background: #f7f7fb;
+      }
+
+      button {
+        font-size: 16px;
+        padding: 8px 12px;
+      }
+
+      #status {
+        margin-top: 12px;
+      }
+
+      #wave {
+        height: 40px;
+        display: flex;
+        gap: 4px;
+        align-items: flex-end;
+        margin-top: 24px;
+        transition: opacity 0.3s;
+        opacity: 0.4;
+      }
+
+      .bar {
+        width: 8px;
+        height: 10px;
+        background: #09f;
+        border-radius: 4px;
+        transition: height 0.15s;
+      }
+
+      /* Indicator Dot Styles */
+      #micIndicator {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        margin-left: 8px;
+        border-radius: 50%;
+        vertical-align: middle;
+        background: #bbb; /* idle */
+        transition: background 0.3s;
+      }
+
+      #micIndicator.listening {
+        background: #0f0;
+        animation: simplePulse 1s infinite;
+      }
+
+      @keyframes simplePulse {
+        0%,
+        100% {
+          transform: scale(1);
         }
-
-        button {
-            font-size: 16px;
-            padding: 8px 12px;
+        50% {
+          transform: scale(1.3);
         }
-
-        #status {
-            margin-top: 12px;
-        }
-
-        #wave {
-            height: 40px;
-            display: flex;
-            gap: 4px;
-            align-items: flex-end;
-            margin-top: 24px;
-            transition: opacity 0.3s;
-            opacity: 0.4;
-        }
-
-        .bar {
-            width: 8px;
-            height: 10px;
-            background: #09f;
-            border-radius: 4px;
-            transition: height 0.15s;
-        }
-
-        /* Indicator Dot Styles */
-       #micIndicator {
-    display: inline-block;
-    width: 12px;
-    height: 12px;
-    margin-left: 8px;
-    border-radius: 50%;
-    vertical-align: middle;
-    background: #bbb; /* idle */
-    transition: background 0.3s;
-}
-
-#micIndicator.listening {
-    background: #0f0;
-    animation: simplePulse 1s infinite;
-}
-
-@keyframes simplePulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.3); }
-}
+      }
     </style>
-</head>
+  </head>
 
-<body>
+  <body>
     <h1>JSVoice — Waveform Visual Demo</h1>
     <button id="micBtn">🎤</button>
     <span id="micIndicator" class="dot idle"></span>
@@ -71,6 +75,5 @@
     <div id="wave"></div>
     <!-- You can load JSVoice here if you want to integrate; for now, this is a visual demo only -->
     <script src="./demo.js"></script>
-</body>
-
+  </body>
 </html>

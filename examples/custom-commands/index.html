@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>JSVoice - Custom Commands Demo</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+
+      .container {
+        background: white;
+        border-radius: 20px;
+        padding: 40px;
+        max-width: 600px;
+        width: 100%;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      }
+
+      h1 {
+        color: #333;
+        margin-bottom: 10px;
+        font-size: 2rem;
+      }
+
+      .subtitle {
+        color: #666;
+        margin-bottom: 30px;
+      }
+
+      .mic-button {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        border: none;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        font-size: 2rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        margin: 0 auto 20px;
+        display: block;
+      }
+
+      .mic-button:hover {
+        transform: scale(1.1);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+      }
+
+      .mic-button.active {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        animation: pulse 1.5s infinite;
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          transform: scale(1);
+        }
+
+        50% {
+          transform: scale(1.05);
+        }
+      }
+
+      .status {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+        text-align: center;
+        font-weight: 500;
+        color: #495057;
+      }
+
+      .commands-list {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 10px;
+        margin-top: 20px;
+      }
+
+      .commands-list h3 {
+        color: #333;
+        margin-bottom: 15px;
+        font-size: 1.2rem;
+      }
+
+      .command-item {
+        background: white;
+        padding: 12px;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        border-left: 4px solid #667eea;
+      }
+
+      .command-item strong {
+        color: #667eea;
+        display: block;
+        margin-bottom: 5px;
+      }
+
+      .command-item small {
+        color: #666;
+      }
+
+      .demo-box {
+        background: #fff3cd;
+        border: 2px solid #ffc107;
+        border-radius: 10px;
+        padding: 20px;
+        margin-top: 20px;
+        text-align: center;
+      }
+
+      .demo-box h3 {
+        color: #856404;
+        margin-bottom: 10px;
+      }
+
+      #colorBox {
+        width: 100%;
+        height: 100px;
+        background: #667eea;
+        border-radius: 10px;
+        margin-top: 10px;
+        transition: all 0.3s ease;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container">
+      <h1>🎤 Custom Commands</h1>
+      <p class="subtitle">Try saying the commands below!</p>
+
+      <button id="micBtn" class="mic-button">🎤</button>
+      <div id="status" class="status">Click the microphone to start</div>
+
+      <div class="demo-box">
+        <h3>Interactive Demo</h3>
+        <p>Try: "change color to red" or "make it blue"</p>
+        <div id="colorBox"></div>
+      </div>
+
+      <div class="commands-list">
+        <h3>Available Commands:</h3>
+
+        <div class="command-item">
+          <strong>"hello world"</strong>
+          <small>Get a friendly greeting</small>
+        </div>
+
+        <div class="command-item">
+          <strong>"what time is it"</strong>
+          <small>Hear the current time</small>
+        </div>
+
+        <div class="command-item">
+          <strong>"change color to [color]"</strong>
+          <small>Change the box color (red, blue, green, yellow, purple)</small>
+        </div>
+
+        <div class="command-item">
+          <strong>"make it [color]"</strong>
+          <small>Alternative way to change color</small>
+        </div>
+
+        <div class="command-item">
+          <strong>"tell me a joke"</strong>
+          <small>Hear a random joke</small>
+        </div>
+
+        <div class="command-item">
+          <strong>"count to [number]"</strong>
+          <small>Count from 1 to the specified number</small>
+        </div>
+      </div>
+    </div>
+
+    <script type="module">
+      import JSVoice from '../../src/JSVoice.js';
+
+      const micBtn = document.getElementById('micBtn');
+      const status = document.getElementById('status');
+      const colorBox = document.getElementById('colorBox');
+
+      const voice = new JSVoice({
+        onStatusChange: (msg) => {
+          status.textContent = msg;
+        },
+        onSpeechStart: () => {
+          micBtn.classList.add('active');
+        },
+        onSpeechEnd: () => {
+          micBtn.classList.remove('active');
+        },
+        onError: (error) => {
+          console.error('Voice error:', error);
+        },
+      });
+
+      // Simple greeting command
+      voice.addCommand('hello world', (raw, cleaned, speak) => {
+        speak('Hello! How can I help you today?');
+      });
+
+      // Time command
+      voice.addCommand('what time is it', (raw, cleaned, speak) => {
+        const now = new Date();
+        const time = now.toLocaleTimeString('en-US', {
+          hour: 'numeric',
+          minute: '2-digit',
+        });
+        speak(`The time is ${time}`);
+      });
+
+      // Pattern command for color change
+      voice.addPatternCommand('change color to {color}', (args, raw, cleaned, speak) => {
+        const color = args.color.toLowerCase();
+        colorBox.style.background = color;
+        speak(`Changed color to ${color}`);
+      });
+
+      // Alternative color command
+      voice.addPatternCommand('make it {color}', (args, raw, cleaned, speak) => {
+        const color = args.color.toLowerCase();
+        colorBox.style.background = color;
+        speak(`Made it ${color}`);
+      });
+
+      // Joke command
+      voice.addCommand('tell me a joke', (raw, cleaned, speak) => {
+        const jokes = [
+          'Why did the JavaScript developer wear glasses? Because he could not C sharp!',
+          'How many programmers does it take to change a light bulb? None, that is a hardware problem!',
+          'Why do programmers prefer dark mode? Because light attracts bugs!',
+          "What is a programmer's favorite hangout place? The Foo Bar!",
+        ];
+        const joke = jokes[Math.floor(Math.random() * jokes.length)];
+        speak(joke);
+      });
+
+      // Count command
+      voice.addPatternCommand('count to {number}', async (args, raw, cleaned, speak) => {
+        const num = parseInt(args.number);
+        if (isNaN(num) || num < 1 || num > 20) {
+          speak('Please choose a number between 1 and 20');
+          return;
+        }
+
+        speak(`Counting to ${num}`);
+        for (let i = 1; i <= num; i++) {
+          await new Promise((resolve) => setTimeout(resolve, 800));
+          speak(i.toString());
+        }
+        speak('Done counting!');
+      });
+
+      // Toggle mic on button click
+      micBtn.addEventListener('click', () => {
+        voice.toggle();
+      });
+    </script>
+  </body>
+</html>
