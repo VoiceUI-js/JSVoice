@@ -10,9 +10,24 @@
   "type": "module",
   "exports": {
     ".": {
-      "import": "./dist/voice-ui.esm.js",
+      "import": "./src/index.js",
       "require": "./dist/voice-ui.cjs.js",
-      "browser": "./dist/voice-ui.umd.js",
+      "types": "./src/index.d.ts"
+    },
+    "./core": {
+      "import": "./src/JSVoice.js",
+      "types": "./src/index.d.ts"
+    },
+    "./engines/native": {
+      "import": "./src/engines/NativeSpeechEngine.js",
+      "types": "./src/index.d.ts"
+    },
+    "./engines/whisper": {
+      "import": "./src/engines/WhisperSpeechEngine.js",
+      "types": "./src/index.d.ts"
+    },
+    "./plugins/visualizer": {
+      "import": "./src/modules/AudioVisualizer.js",
       "types": "./src/index.d.ts"
     }
   },

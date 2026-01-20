@@ -46,7 +46,7 @@ Comprehensive error handling, extensive documentation, and active maintenance.
 Simple API with clear documentation and working examples to get started in minutes.
 
 ### Feature Rich
-Built-in commands, pattern matching, wake word detection, and real-time audio visualization.
+Built-in commands, pattern matching, wake word detection, and pluggable engines.
 
 ---
 
@@ -110,13 +110,13 @@ Text-to-speech output with multiple voices, customizable speech parameters inclu
 Easy registration of exact phrase commands and pattern-based commands with automatic variable extraction for dynamic command handling.
 
 ### Wake Word Detection
-Hands-free activation with configurable wake words like "Hey Assistant" or "OK Computer", customizable timeout settings, and audio feedback.
+Hands-free activation with configurable wake words like "Hey Assistant".
+*Note: Currently uses cloud-based recognition APIs. On-device WASM detection is on the roadmap.*
 
 ### Pattern Matching
 Extract variables from voice commands automatically using simple pattern syntax like `{variable}` for dynamic command processing.
 
-### Audio Visualization
-Real-time amplitude monitoring with waveform display, frequency bar visualization, and customizable rendering options.
+
 
 ### Pluggable Engines
 Support for custom speech recognition engines (e.g., OpenAI Whisper) via the `BaseSpeechEngine` architecture. Use the browser's native API or plug in your own backend.
@@ -186,9 +186,16 @@ voice.addPatternCommand('set volume to {level}', (args) => {
 // Result: Volume set to 75%
 ```
 
-### Wake Word Detection
+### Wake Word Detection (Text-Stream Based)
 
-Enable hands-free activation with wake words:
+**⚠️ PRIVACY WARNING:**
+This feature currently relies on **continuous text streaming**. Even if you are only waiting for "Hey Computer", the audio is being sent to the speech recognition provider (e.g., Google, OpenAI) to be transcribed into text *before* JSVoice checks for the keyword.
+*   **Do not use this** if you require strictly offline privacy (unless using a local engine).
+*   **Do not use this** with paid APIs (like Whisper) for "always on" listening, as it will incur massive costs.
+
+To enable wake word:
+
+> ⚠️ **Privacy Notice:** This feature currently relies on the browser's speech recognition engine (Web Speech API). In Chrome, this means audio is streamed to Google servers effectively continuously to detect the phrase. For strictly private/offline environments, this is not yet recommended.
 
 ```javascript
 const voice = new JSVoice({
@@ -205,22 +212,7 @@ const voice = new JSVoice({
 // System executes command
 ```
 
-### Real-Time Audio Visualization
 
-Display audio waveforms and frequency bars:
-
-```javascript
-voice.startAmplitude((bars) => {
-  // bars is array of normalized values (0-1)
-  bars.forEach((value, index) => {
-    const height = value * 100;
-    updateVisualization(index, height);
-  });
-}, {
-  mode: 'bars',
-  barCount: 16
-});
-```
 
 ---
 
@@ -291,26 +283,7 @@ Remove a pattern command.
 voice.removePatternCommand('search for {query}');
 ```
 
-### Visualization Methods
 
-**startAmplitude(callback, options)**  
-Start real-time audio amplitude monitoring.
-
-```javascript
-voice.startAmplitude((bars) => {
-  console.log(bars);
-}, { 
-  mode: 'bars', 
-  barCount: 8 
-});
-```
-
-**stopAmplitude()**  
-Stop amplitude monitoring and clean up resources.
-
-```javascript
-voice.stopAmplitude();
-```
 
 ### Properties
 

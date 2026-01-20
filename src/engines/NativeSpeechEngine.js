@@ -37,11 +37,13 @@ class NativeSpeechEngine extends BaseSpeechEngine {
     _setupListeners() {
         this.recognition.onstart = () => {
             this.isListening = true;
+            this.setState('listening');
             this.onStart();
         };
 
         this.recognition.onend = () => {
             this.isListening = false;
+            this.setState('idle');
             this.onEnd();
         };
 

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSVoice Visualization Demo</title>
+    <style>
+        body { font-family: system-ui, sans-serif; max-width: 800px; margin: 2rem auto; padding: 0 1rem; background: #111; color: #eee; }
+        .controls { display: flex; gap: 1rem; margin-bottom: 2rem; }
+        button { padding: 0.5rem 1rem; cursor: pointer; background: #333; color: white; border: 1px solid #555; border-radius: 4px; }
+        button:hover { background: #444; }
+        canvas { width: 100%; height: 300px; background: #000; border: 1px solid #333; border-radius: 8px; }
+        .status { margin-bottom: 1rem; color: #aaa; }
+    </style>
+</head>
+<body>
+    <h1>JSVoice Audio Visualization</h1>
+    
+    <div class="status" id="status">Status: Ready</div>
+
+    <div class="controls">
+        <button id="btn-bars">Start Frequency Bars</button>
+        <button id="btn-wave">Start Waveform</button>
+        <button id="btn-stop">Stop</button>
+    </div>
+
+    <canvas id="visualizer" width="800" height="300"></canvas>
+
+    <!-- Load JSVoice (assuming dist build calls it VoiceUI or JSVoice) -->
+    <!-- For this demo to work from source, we'd need a build step. 
+         Here we simulate the expected usage with the UMD build path. -->
+    <script src="../dist/voice-ui.umd.min.js"></script>
+
+    <script>
+        // Check if JSVoice is loaded
+        if (typeof JSVoice === 'undefined') {
+            document.getElementById('status').innerText = 'Error: JSVoice library not found. Please build the project first.';
+        }
+
+        let voice = null;
+        
+        try {
+            voice = new JSVoice({
+                onStatusChange: (msg) => {
+                    console.log('[Status]', msg);
+                    document.getElementById('status').innerText = 'Status: ' + msg;
+                }
+            });
+        } catch (e) {
+            console.error(e);
+        }
+
+        const canvas = document.getElementById('visualizer');
+        const ctx = canvas.getContext('2d');
+
+        function drawBars(data) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const barWidth = canvas.width / data.length;
+            
+            data.forEach((value, index) => {
+                const height = value * canvas.height;
+                const x = index * barWidth;
+                const y = canvas.height - height;
+                
+                ctx.fillStyle = `hsl(${index * 10}, 70%, 50%)`;
+                ctx.fillRect(x, y, barWidth - 2, height);
+            });
+        }
+
+        function drawWaveform(data) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#00ff00';
+            ctx.beginPath();
+
+            const sliceWidth = canvas.width * 1.0 / data.length;
+            let x = 0;
+
+            for(let i = 0; i < data.length; i++) {
+                // data is 0-1, 0.5 is center (silence)
+                const v = data[i]; 
+                const y = v * canvas.height; 
+
+                if(i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+
+                x += sliceWidth;
+            }
+
+            ctx.lineTo(canvas.width, canvas.height / 2);
+            ctx.stroke();
+        }
+
+        document.getElementById('btn-bars').addEventListener('click', () => {
+            if (!voice) return;
+            voice.startAmplitude((data) => {
+                drawBars(data);
+            }, { mode: 'bars', barCount: 32 });
+            
+            document.getElementById('status').innerText = 'Status: Visualizing Frequency Bars...';
+        });
+
+        document.getElementById('btn-wave').addEventListener('click', () => {
+            if (!voice) return;
+            voice.startAmplitude((data) => {
+                drawWaveform(data);
+            }, { mode: 'waveform' });
+
+            document.getElementById('status').innerText = 'Status: Visualizing Waveform...';
+        });
+
+        document.getElementById('btn-stop').addEventListener('click', () => {
+            if (!voice) return;
+            voice.stopAmplitude();
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            document.getElementById('status').innerText = 'Status: Stopped';
+        });
+    </script>
+</body>
+</html>

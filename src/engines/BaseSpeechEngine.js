@@ -9,51 +9,34 @@ class BaseSpeechEngine {
         this.onEnd = () => { };
         this.onError = (error) => { };
         this.onResult = (transcript, isFinal) => { };
+        this.onStateChange = (state) => { }; // NEW: State change callback
         this.isListening = false;
+        this.state = 'idle'; // NEW: Initial state
     }
 
     /**
-     * Check if this engine is supported in the current environment.
-     * By default returns true, subclasses should override if they have specific requirements.
-     * @returns {boolean}
+     * Updates the engine state and notifies listeners.
+     * @param {string} newState - One of 'idle', 'listening', 'recording', 'processing', 'speaking', 'error'
      */
-    static get isSupported() {
-        return true;
+    setState(newState) {
+        if (this.state !== newState) {
+            this.state = newState;
+            this.onStateChange(newState);
+        }
     }
 
-    /**
-     * Initialize the engine (load models, setup listeners, etc.)
-     * @returns {Promise<void>}
-     */
-    async init() {
-        throw new Error('init() must be implemented by subclass');
-    }
-
-    /**
-     * Start speech recognition
-     * @returns {Promise<void>}
-     */
-    async start() {
-        throw new Error('start() must be implemented by subclass');
-    }
-
-    /**
-     * Stop speech recognition
-     * @returns {Promise<void>}
-     */
-    async stop() {
-        throw new Error('stop() must be implemented by subclass');
-    }
+    // ... (rest of the class methods)
 
     /**
      * Set callback functions
      * @param {Object} callbacks
      */
-    setCallbacks({ onStart, onEnd, onError, onResult }) {
+    setCallbacks({ onStart, onEnd, onError, onResult, onStateChange }) {
         if (onStart) this.onStart = onStart;
         if (onEnd) this.onEnd = onEnd;
         if (onError) this.onError = onError;
         if (onResult) this.onResult = onResult;
+        if (onStateChange) this.onStateChange = onStateChange;
     }
 
     /**

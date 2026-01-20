@@ -37,7 +37,6 @@ JSVoice is a lightweight, zero-dependency JavaScript library that brings voice c
 - 🎯 **Custom Commands** - Define your own voice commands
 - 🔍 **Pattern Matching** - Extract variables from commands
 - 🎙️ **Wake Word Detection** - Hands-free activation
-- 📊 **Amplitude Visualization** - Real-time audio waveforms
 - 🔧 **Zero Dependencies** - No external libraries required
 - 📦 **Small Bundle** - Lightweight and fast
 
@@ -299,35 +298,7 @@ voice.setOption('autoRestart', false);
 
 ---
 
-#### `startAmplitude(callback: Function, options?: Object): void`
 
-Starts real-time audio amplitude monitoring.
-
-```javascript
-voice.startAmplitude((bars) => {
-  // bars is array of 0-1 values
-  bars.forEach((value, index) => {
-    console.log(`Bar ${index}: ${Math.round(value * 100)}%`);
-  });
-}, {
-  mode: 'bars',
-  barCount: 8
-});
-```
-
-**Options:**
-- `mode` - 'bars' or 'waveform'
-- `barCount` - Number of frequency bars (default: 8)
-
----
-
-#### `stopAmplitude(): void`
-
-Stops amplitude monitoring and cleans up resources.
-
-```javascript
-voice.stopAmplitude();
-```
 
 ---
 
@@ -572,6 +543,13 @@ voice.addPatternCommand('search for {query}', (args, raw, cleaned, speak) => {
 ### Hands-Free Activation
 
 Wake word mode allows hands-free activation of voice commands.
+ 
+ > **⚠️ Privacy & Battery Warning**  
+ > Current implementation processes audio via the active Speech Engine (e.g. Web Speech API). 
+ > - **Privacy:** In Chrome, audio is sent to Google servers for recognition.  
+ > - **Battery:** Continuous listening prevents the microphone hardware from sleeping.  
+ > 
+ > *An on-device, offline wake word detector (WASM) is planned for v0.3.0.*
 
 ```javascript
 const voice = new JSVoice({
@@ -601,38 +579,7 @@ System: [Scrolls down, returns to wake word mode]
 
 ---
 
-## Amplitude Visualization
 
-### Real-Time Audio Waveforms
-
-Visualize microphone input in real-time.
-
-```javascript
-const canvas = document.getElementById('waveform');
-const ctx = canvas.getContext('2d');
-
-voice.startAmplitude((bars) => {
-  // Clear canvas
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  
-  // Draw bars
-  const barWidth = canvas.width / bars.length;
-  bars.forEach((value, index) => {
-    const height = value * canvas.height;
-    const x = index * barWidth;
-    const y = canvas.height - height;
-    
-    ctx.fillStyle = `hsl(${value * 120}, 70%, 50%)`;
-    ctx.fillRect(x, y, barWidth - 2, height);
-  });
-}, {
-  mode: 'bars',
-  barCount: 16
-});
-
-// Stop when done
-voice.stopAmplitude();
-```
 
 ---
 
