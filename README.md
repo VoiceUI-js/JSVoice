@@ -118,6 +118,9 @@ Extract variables from voice commands automatically using simple pattern syntax 
 ### Audio Visualization
 Real-time amplitude monitoring with waveform display, frequency bar visualization, and customizable rendering options.
 
+### Pluggable Engines
+Support for custom speech recognition engines (e.g., OpenAI Whisper) via the `BaseSpeechEngine` architecture. Use the browser's native API or plug in your own backend.
+
 ### Built-in Commands
 Seven categories of pre-built commands including scrolling, zooming, clicking, form filling, content reading, theme control, and navigation.
 
@@ -357,6 +360,8 @@ const voice = new JSVoice({
   lang: 'en-US',                // Recognition language
   autoRestart: true,            // Auto-restart on error
   restartDelay: 500,            // Restart delay in milliseconds
+  engines: [],                  // Custom engine classes (try first)
+  engine: null,                 // Specific engine instance
   
   // Wake word settings
   wakeWord: null,               // Wake word phrase (e.g., 'hey assistant')

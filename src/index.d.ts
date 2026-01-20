@@ -31,6 +31,12 @@ declare module 'jsvoice' {
         /** Delay in milliseconds before restarting recognition */
         restartDelay?: number;
 
+        /** List of engine classes to try (priority order) */
+        engines?: Array<new (options: JSVoiceOptions) => BaseSpeechEngine>;
+
+        /** Specific engine instance to use (overrides engines) */
+        engine?: BaseSpeechEngine;
+
         /** Wake word phrase for hands-free activation (forces continuous mode) */
         wakeWord?: string | null;
 
@@ -77,6 +83,30 @@ declare module 'jsvoice' {
 
         /** Number of frequency bars to return (only used in 'bars' mode) */
         barCount?: number;
+    }
+
+    /**
+     * Abstract base class for speech recognition engines.
+     */
+    export class BaseSpeechEngine {
+        constructor(options?: any);
+        static readonly isSupported: boolean;
+        init(): Promise<void>;
+        start(): Promise<void>;
+        stop(): Promise<void>;
+        setCallbacks(callbacks: {
+            onStart?: () => void;
+            onEnd?: () => void;
+            onError?: (error: any) => void;
+            onResult?: (transcript: string, isFinal: boolean) => void;
+        }): void;
+        setOptions(options: any): void;
+        isListening: boolean;
+        options: any;
+        onStart: () => void;
+        onEnd: () => void;
+        onError: (error: any) => void;
+        onResult: (transcript: string, isFinal: boolean) => void;
     }
 
     /**

@@ -142,6 +142,12 @@ Commands are phrases that trigger specific actions when recognized.
 - **Custom Commands** - Your own exact phrase commands
 - **Pattern Commands** - Commands with variable extraction
 
+### 4. Pluggable Speech Engines
+
+JSVoice supports a pluggable architecture for speech recognition engines.
+- **NativeSpeechEngine** - Uses the browser's Web Speech API (default).
+- **Custom Engines** - You can implement your own engines (e.g., using OpenAI Whisper) by extending `BaseSpeechEngine`.
+
 ---
 
 ## API Reference
@@ -630,6 +636,56 @@ voice.stopAmplitude();
 
 ---
 
+---
+
+## Custom Speech Engines
+
+JSVoice allows you to use custom speech recognition providers (like OpenAI Whisper, Azure Speech, etc.) by creating a custom engine.
+
+### Creating a Custom Engine
+
+To create a custom engine, extend the `BaseSpeechEngine` class and implement the required methods.
+
+```javascript
+import { BaseSpeechEngine } from 'jsvoice';
+
+class WhisperEngine extends BaseSpeechEngine {
+  async init() {
+    // Initialize your Whisper client or WebSocket connection
+    console.log('Whisper Engine Initialized');
+  }
+
+  async start() {
+    this.isListening = true;
+    this.onStart(); // Notify JSVoice
+    // Start capturing audio and sending to Whisper
+  }
+
+  async stop() {
+    this.isListening = false;
+    this.onEnd(); // Notify JSVoice
+    // Stop capturing
+  }
+}
+```
+
+### Using a Custom Engine
+
+Pass your custom engine class or instance to the `JSVoice` constructor.
+
+```javascript
+const voice = new JSVoice({
+  engines: [WhisperEngine, NativeSpeechEngine] // Try Whisper first, fallback to Native
+});
+
+// Or force a specific instance
+const voice = new JSVoice({
+  engine: new WhisperEngine({ apiKey: '...' })
+});
+```
+
+---
+
 ## Configuration Options
 
 ### Complete Options Reference
@@ -643,6 +699,10 @@ interface JSVoiceOptions {
   autoRestart?: boolean;      // Default: true
   restartDelay?: number;      // Default: 500ms
   
+  // Engine Settings
+  engines?: Array<Class<BaseSpeechEngine>>; // List of engine classes to try (priority order)
+  engine?: BaseSpeechEngine;               // Specific engine instance to use (overrides engines)
+
   // Wake Word Settings
   wakeWord?: string | null;          // Default: null
   wakeWordTimeout?: number;          // Default: 5000ms
