@@ -1,6 +1,6 @@
 {
   "name": "jsvoice",
-  "version": "0.2.2",
+  "version": "1.0.2",
   "description": "Modern JavaScript voice command library with speech recognition, synthesis, pattern matching, wake word detection, and real-time audio visualization. Zero dependencies, TypeScript ready, perfect for accessibility and voice-first UIs.",
   "main": "dist/voice-ui.cjs.js",
   "module": "dist/voice-ui.esm.js",
