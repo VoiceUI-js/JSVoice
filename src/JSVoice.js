@@ -1,6 +1,7 @@
 import { callCallback, cleanText } from './utils/helpers.js';
 import { initRecognition, checkMicrophonePermission } from './modules/RecognitionManager.js';
 import { processCommand } from './modules/CommandProcessor.js';
+import NativeSpeechEngine from './engines/NativeSpeechEngine.js';
 
 /**
  * JSVoice Library (formerly VoiceUI)
@@ -8,7 +9,7 @@ import { processCommand } from './modules/CommandProcessor.js';
  */
 class JSVoice {
   static get isApiSupported() {
-    return !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+    return NativeSpeechEngine.isSupported; // Or check if a custom engine is available, but for static check, native is the baseline
   }
 
   /**
@@ -22,6 +23,7 @@ class JSVoice {
    * @property {number} [restartDelay=500] - Delay in milliseconds before restarting recognition if autoRestart is true.
    * @property {string|null} [wakeWord=null] - A phrase that will activate command listening. If set, 'continuous' is forced to true.
    * @property {number} [wakeWordTimeout=5000] - Duration in milliseconds after a wake word is detected or a command is processed, during which the system listens for commands. After this, it reverts to waiting for the wake word.
+   * @property {Object} [engine=null] - Optional. An instance of a custom speech engine (BaseSpeechEngine subclass). If null, uses NativeSpeechEngine.
    * @property {Function} [onSpeechStart] - Callback fired when speech recognition starts.
    * @property {Function} [onSpeechEnd] - Callback fired when speech recognition ends.
    * @property {Function} [onCommandRecognized] - Callback fired when a command is successfully recognized and processed.
@@ -39,18 +41,7 @@ class JSVoice {
    * @param {JSVoiceOptions} options - Configuration options for the JSVoice library.
    */
   constructor(options = {}) {
-    if (!JSVoice.isApiSupported) {
-      const error = new Error(
-        'Web Speech API not supported by this browser. Please use Chrome or Edge.'
-      );
-      console.warn('[JSVoice]', error.message);
-      this._callCallback(
-        'onStatusChange',
-        'Voice commands not supported by your browser. Try Chrome or Edge.'
-      );
-      this._callCallback('onError', error);
-      return;
-    }
+
 
     this.options = {
       continuous: true,
@@ -62,16 +53,18 @@ class JSVoice {
       restartDelay: 500,
       wakeWord: null,
       wakeWordTimeout: 5000,
-      onSpeechStart: () => {},
-      onSpeechEnd: () => {},
-      onCommandRecognized: () => {},
-      onCommandNotRecognized: () => {},
-      onActionPerformed: () => {},
-      onMicrophonePermissionGranted: () => {},
-      onMicrophonePermissionDenied: () => {},
-      onWakeWordDetected: () => {},
-      onError: () => {},
-      onStatusChange: () => {},
+      engines: [NativeSpeechEngine], // Automatic fallback list (Priority: Top -> Bottom)
+      engine: null, // Manual instance override
+      onSpeechStart: () => { },
+      onSpeechEnd: () => { },
+      onCommandRecognized: () => { },
+      onCommandNotRecognized: () => { },
+      onActionPerformed: () => { },
+      onMicrophonePermissionGranted: () => { },
+      onMicrophonePermissionDenied: () => { },
+      onWakeWordDetected: () => { },
+      onError: () => { },
+      onStatusChange: () => { },
       ...options,
     };
 
@@ -107,15 +100,61 @@ class JSVoice {
       this.addPatternCommand(patternCmd.pattern, patternCmd.callback);
     }
 
-    // Initialize Recognition Manager
+    // --- Engine Selection Logic ---
+    let EngineClassToUse = null;
+    let engineInstance = this.options.engine; // Use manual instance if provided
+
+    // If no manual instance, try to find a supported engine class from the list
+    if (!engineInstance) {
+      const enginesList = Array.isArray(this.options.engines) ? this.options.engines : [NativeSpeechEngine];
+
+      for (const EngineClass of enginesList) {
+        if (EngineClass && typeof EngineClass.isSupported !== 'undefined') {
+          if (EngineClass.isSupported) {
+            EngineClassToUse = EngineClass;
+            break;
+          }
+        } else {
+          // Fallback for classes that might not have the static getter explicitly (assume supported if passed)
+          // or if passed as non-class (error)
+          console.warn('[JSVoice] Invalid engine class provided in options.engines');
+        }
+      }
+
+      if (EngineClassToUse) {
+        engineInstance = new EngineClassToUse(this.options);
+      }
+    }
+
+    if (!engineInstance) {
+      const error = new Error(
+        'No supported speech engine found. Please use Chrome/Edge or provide a custom fallback engine (e.g., Whisper).'
+      );
+      console.warn('[JSVoice]', error.message);
+      this._callCallback(
+        'onStatusChange',
+        'Voice commands not supported by your browser.'
+      );
+      this._callCallback('onError', error);
+      return;
+    }
+
+    // Initialize Recognition Manager (Binds the engine)
     this.recognition = initRecognition(
-      this.options,
+      engineInstance,
       this._updateStatus.bind(this),
       this._callCallback.bind(this),
       this._handleSpeechResult.bind(this),
       this._startRecognitionInternal.bind(this),
       this._state
     );
+
+    // Initialize Engine (Async)
+    this._initPromise = this.recognition.init().catch((e) => {
+      console.error('[JSVoice] Engine Initialization Error:', e);
+      this._callCallback('onError', e);
+      this._updateStatus(`Error initializing speech engine: ${e.message}`);
+    });
 
     // Initial microphone check
     this._initialMicrophoneCheckPromise = this._checkMicrophonePermission().catch((e) => {
@@ -231,18 +270,13 @@ class JSVoice {
   }
 
   /** Internal method to safely start recognition. */
-  _startRecognitionInternal() {
+  async _startRecognitionInternal() {
     if (this.recognition && !this._state._isListening) {
       try {
-        this.recognition.start();
+        await this.recognition.start();
         return true;
       } catch (e) {
-        if (e.name === 'InvalidStateError') {
-          this._state._isListening = true;
-          this._updateStatus('Already listening for commands.');
-          return true;
-        }
-        console.error('[JSVoice] Error attempting to start SpeechRecognition:', e);
+        console.error('[JSVoice] Error attempting to start Speech Engine:', e);
         this._callCallback('onError', e);
         this._updateStatus(`Error starting voice: ${e.message}`);
         this._state._isListening = false;
@@ -259,10 +293,12 @@ class JSVoice {
    * Starts speech recognition.
    */
   async start() {
-    if (!JSVoice.isApiSupported) {
-      this._updateStatus('Voice commands not supported by your browser.');
+    if (!this.recognition) {
+      this._updateStatus('Voice commands not initialized.');
       return false;
     }
+
+    if (this._initPromise) await this._initPromise.catch(() => { });
 
     await this._initialMicrophoneCheckPromise;
 
@@ -507,13 +543,8 @@ class JSVoice {
       this.options[key] = value;
 
       // Apply changes for options that affect recognition
-      if (
-        this.recognition &&
-        (key === 'continuous' || key === 'interimResults' || key === 'lang')
-      ) {
-        this.recognition.continuous = this.options.continuous;
-        this.recognition.interimResults = this.options.interimResults;
-        this.recognition.lang = this.options.lang;
+      if (this.recognition) {
+        this.recognition.setOptions({ [key]: value });
       }
 
       // Handle wake word changes
