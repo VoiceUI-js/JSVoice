@@ -15,17 +15,20 @@ export default {
       file: pkg.main,
       format: 'cjs',
       sourcemap: true,
+      inlineDynamicImports: true,
     },
     {
       file: pkg.module,
       format: 'es',
       sourcemap: true,
+      inlineDynamicImports: true,
     },
     {
       file: pkg.browser,
       format: 'umd',
       name: 'JSVoice',
       sourcemap: true,
+      inlineDynamicImports: true,
     },
     {
       file: pkg.unpkg,
@@ -33,6 +36,7 @@ export default {
       name: 'JSVoice',
       sourcemap: true,
       plugins: [terser()],
+      inlineDynamicImports: true,
     },
   ],
   plugins: [

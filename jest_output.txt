@@ -1,0 +1,33 @@
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+FAIL test/modules/CommandManager.test.js
+  CommandManager
+    √ should register exact command (5 ms)
+    √ should register pattern command (2 ms)
+    √ should match exact command O(1) (1 ms)
+    × should match pattern command (2 ms)
+    √ should prioritize exact over pattern
+    √ should support Scope Stack
+
+  ● CommandManager › should match pattern command
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: false
+
+    [0m [90m 36 |[39m         [36mconst[39m result [33m=[39m [36mawait[39m manager[33m.[39mprocess([32m'volume to 50'[39m[33m,[39m jest[33m.[39mfn())[33m;[39m
+     [90m 37 |[39m
+    [31m[1m>[22m[39m[90m 38 |[39m         expect(result)[33m.[39mtoBe([36mtrue[39m)[33m;[39m
+     [90m    |[39m                        [31m[1m^[22m[39m
+     [90m 39 |[39m         expect(callback)[33m.[39mtoHaveBeenCalledWith(
+     [90m 40 |[39m             expect[33m.[39mobjectContaining({ val[33m:[39m [35m50[39m })[33m,[39m
+     [90m 41 |[39m             expect[33m.[39many([33mString[39m)[33m,[39m[0m
+
+      at Object.toBe (test/modules/CommandManager.test.js:38:24)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 5 passed, 6 total
+Snapshots:   0 total
+Time:        1.696 s, estimated 2 s
+Ran all test suites matching /test\\modules\\CommandManager.test.js/i.
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?

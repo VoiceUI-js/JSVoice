@@ -1,4 +1,5 @@
 import { callCallback, cleanText } from './utils/helpers.js';
+import { logger } from './utils/Logger.js';
 import { initRecognition, checkMicrophonePermission } from './modules/RecognitionManager.js';
 import { CommandManager } from './modules/CommandManager.js';
 
@@ -42,8 +43,41 @@ class JSVoice {
       onCommandEvaluated: () => { },  // New Debug Callback
       onError: () => { },
       onStatusChange: () => { },
+      onEngineSelected: () => { },
+      onFallbackActivated: () => { },
+      onTelemetry: () => { }, // Global Telemetry Hook
       ...options,
     };
+
+    // New Callbacks object to manage events
+    this._callbacks = {
+      onSpeechStart: () => { },
+      onSpeechEnd: () => { },
+      onResult: (transcript, isFinal) => { },
+      onCommandRecognized: (commandName, commandText) => { },
+      onCommandNotRecognized: () => { },
+      onMicrophonePermissionGranted: () => { },
+      onMicrophonePermissionDenied: () => { },
+      onEngineStateChange: () => { },
+      onEngineSelected: () => { },
+      onFallbackActivated: () => { },
+      onTelemetry: () => { },
+      onCommandEvaluated: () => { },
+      onError: () => { },
+      onStatusChange: () => { },
+      ...options, // Merge user-provided callbacks
+    };
+
+    // State Snapshot (Reactive Source of Truth)
+    this._snapshot = {
+      status: 'idle',
+      transcript: { partial: '', final: '', updatedAt: 0 },
+      permissions: { microphone: 'unknown' },
+      engine: { name: 'unknown', mode: 'unknown' },
+      metrics: {}
+    };
+    this._listeners = new Set();
+
 
     // Warn if no engines provided
     if ((!this.options.engines || this.options.engines.length === 0) && !this.options.engine) {
@@ -54,6 +88,7 @@ class JSVoice {
     this._commandManager = new CommandManager();
     this._commandManager.debugMode = !!this.options.debug;
     this._commandManager.onCommandEvaluated = (evt) => this._callCallback('onCommandEvaluated', evt);
+    this._commandManager.onTelemetry = (evt) => this._callCallback('onTelemetry', evt);
 
     // Set initial scope if defined
     if (this.options.defaultScope !== 'global') {
@@ -65,6 +100,7 @@ class JSVoice {
      * @param {Function} plugin - Function receiving a restricted API
      */
     this.use = (plugin) => {
+      const _self = this;
       if (typeof plugin === 'function') {
         const pluginApi = {
           // Public Methods
@@ -90,7 +126,7 @@ class JSVoice {
           get microphoneAllowed() { return this.microphoneAllowed; },
           get voiceFeedback() { return this.voiceFeedback; },
           get isApiSupported() { return JSVoice.isApiSupported; },
-          get options() { return { ...this.options }; }
+          get options() { return { ..._self.options }; }
         };
 
         plugin(pluginApi);
@@ -163,7 +199,7 @@ class JSVoice {
     if (!engineInstance) {
       // Only log if we expected engines (i.e. browser environment)
       if (typeof window !== 'undefined' && this.options.engines.length > 0) {
-        console.warn('[JSVoice] No supported speech engine found.');
+        logger.warn('No supported speech engine found.');
       }
       return;
     }
@@ -196,7 +232,7 @@ class JSVoice {
     );
 
     this._initPromise = this.recognition.init().catch((e) => {
-      console.error('[JSVoice] Engine Init Error:', e);
+      logger.error('Engine Init Error:', e);
       this._callCallback('onError', e);
     });
   }
@@ -304,8 +340,8 @@ class JSVoice {
    */
   async start() {
     if (this._startLock) {
-      console.warn('[JSVoice] start() ignored: operation already in progress.');
-      return false;
+      logger.warn('start() ignored: operation already in progress.');
+      return false; // Lock contention is not necessarily an error, just a no-op
     }
     this._startLock = true;
     const mySession = ++this._sessionToken;
@@ -313,10 +349,10 @@ class JSVoice {
     try {
       if (!this.recognition) {
         this._updateStatus('Voice commands not initialized.');
-        return false;
+        throw new Error('Voice engine not initialized.');
       }
 
-      if (this._initPromise) await this._initPromise.catch(() => { });
+      if (this._initPromise) await this._initPromise.catch((e) => logger.error('Engine Init Error', e));
 
       // Async Check: Did stop() happen while we waited?
       if (mySession !== this._sessionToken) return false;
@@ -328,7 +364,8 @@ class JSVoice {
 
       if (!this._state._microphoneAllowed) {
         this._updateStatus('Microphone access denied.');
-        return false;
+        // Explicit rejection for modern await flows
+        throw new Error('Microphone access denied.');
       }
 
       if (this._state._wakeWordModeActive) {
@@ -338,7 +375,8 @@ class JSVoice {
         this._updateStatus('Listening for commands...');
       }
 
-      return await this._startRecognitionInternal();
+      const result = await this._startRecognitionInternal();
+      return result;
     } finally {
       this._startLock = false;
     }
@@ -439,6 +477,7 @@ class JSVoice {
 
   addPatternCommand(pattern, callback) {
     // Backwards compatibility wrapper
+    logger.warn('addPatternCommand is deprecated. Use addCommand(phrase, callback, { isPattern: true }) instead.');
     this._commandManager.register(pattern, callback, { type: 'pattern', isPattern: true });
   }
 
@@ -448,6 +487,14 @@ class JSVoice {
 
   setScope(scopeName) {
     this._commandManager.setScope(scopeName);
+  }
+
+  pushScope(scopeName) {
+    this._commandManager.pushScope(scopeName);
+  }
+
+  popScope() {
+    return this._commandManager.popScope();
   }
 
   resetScope() {
@@ -460,10 +507,91 @@ class JSVoice {
     this.options[key] = value;
     if (key === 'debug') {
       this._commandManager.debugMode = !!value;
+      logger.setDebug(value);
     }
     if (this.recognition && this.recognition.setOptions) {
       this.recognition.setOptions({ [key]: value });
     }
+  }
+
+  // Getters
+  /* -------------------------------------------------------------------------- */
+  /*                               Internal Helpers                             */
+  /* -------------------------------------------------------------------------- */
+
+  getSnapshot() {
+    return this._snapshot;
+  }
+
+  subscribe(listener) {
+    if (!this._listeners) this._listeners = new Set();
+    this._listeners.add(listener);
+    // Emit initial
+    listener(this._snapshot, { type: 'init' });
+    return () => this._listeners.delete(listener);
+  }
+
+  _notifyListeners(event) {
+    if (!this._listeners) return;
+    this._listeners.forEach(l => l(this._snapshot, event));
+  }
+
+  _updateSnapshot(changes) {
+    this._snapshot = { ...this._snapshot, ...changes };
+  }
+
+  _callCallback(name, ...args) {
+    // 1. Update Snapshot based on event
+    if (name === 'onEngineStateChange') {
+      const state = args[0] || 'unknown';
+      this._updateSnapshot({ status: state });
+    }
+
+    if (name === 'onResult') {
+      // args[0] is transcript or event
+      const data = args[0];
+      const now = Date.now();
+      if (typeof data === 'string') {
+        this._updateSnapshot({
+          transcript: {
+            partial: (!args[1] ? data : ''),
+            final: (args[1] ? data : this._snapshot.transcript.final),
+            updatedAt: now
+          }
+        });
+      } else if (data && typeof data === 'object') {
+        // Protocol
+        this._updateSnapshot({
+          transcript: {
+            partial: (!data.isFinal ? data.text : ''),
+            final: (data.isFinal ? data.text : this._snapshot.transcript.final),
+            updatedAt: now
+          }
+        });
+      }
+    }
+
+    if (name === 'onEngineSelected') {
+      const { mode } = args[0] || {};
+      this._updateSnapshot({ engine: { ...this._snapshot.engine, mode } });
+    }
+
+    if (this._listeners) {
+      this._notifyListeners({ type: name, payload: args });
+    }
+
+    // 3. Execute legacy callback
+    if (this._callbacks && typeof this._callbacks[name] === 'function') {
+      try {
+        this._callbacks[name](...args);
+      } catch (err) {
+        console.error(`[JSVoice] Error in callback '${name}':`, err);
+      }
+    }
+  }
+
+  _updateStatus(message) {
+    this._callCallback('onStatusChange', message);
   }
 
   // Getters

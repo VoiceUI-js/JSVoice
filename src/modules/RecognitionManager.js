@@ -1,4 +1,5 @@
 // src/modules/RecognitionManager.js
+import { logger } from '../utils/Logger.js';
 
 /**
  * Initializes the SpeechRecognition instance and sets up its event handlers.
@@ -20,7 +21,7 @@ export function initRecognition(
 ) {
   if (!speechEngine) {
     const error = new Error('No speech engine provided.');
-    console.error('[JSVoice] initRecognition:', error.message);
+    logger.error('initRecognition:', error.message);
     callCallback('onError', error);
     return null;
   }
@@ -41,7 +42,22 @@ export function initRecognition(
       }
     },
 
-    onResult: (transcript, isFinal) => {
+    onResult: (resultOrTranscript, isFinalOrFlag) => {
+      // V2.2 Protocol Support: Check if it's an object (TranscriptEvent) or legacy string
+      let transcript = '';
+      let isFinal = false;
+
+      if (typeof resultOrTranscript === 'string') {
+        transcript = resultOrTranscript;
+        isFinal = !!isFinalOrFlag;
+      } else if (typeof resultOrTranscript === 'object') {
+        // It's a TranscriptEvent
+        transcript = resultOrTranscript.text || '';
+        isFinal = resultOrTranscript.isFinal || resultOrTranscript.type === 'final';
+        // Forward telemetry
+        callCallback('onTelemetry', { ...resultOrTranscript, type: 'transcript_event' });
+      }
+
       if (!isFinal) {
         // Interim results
         if (transcript.trim()) {
@@ -63,7 +79,7 @@ export function initRecognition(
       callCallback('onSpeechEnd');
 
       if (state._isStoppingIntentionally) {
-        console.log('[JSVoice] Speech Engine ended due to intentional stop. Resetting flag.');
+        logger.log('Speech Engine ended due to intentional stop. Resetting flag.');
         state._isStoppingIntentionally = false;
         return;
       }
@@ -102,7 +118,7 @@ export function initRecognition(
         return; // Ignore intentional stops
       }
 
-      console.error('[JSVoice] Speech Engine Error:', errorName, errorEvent);
+      logger.error('Speech Engine Error:', errorName, errorEvent);
       callCallback('onError', errorEvent);
       state._isListening = false;
 
@@ -156,39 +172,35 @@ export function initRecognition(
   return speechEngine;
 }
 
-/**
- * Attempts to get microphone permission using the MediaDevices API.
- * @param {Function} updateStatus - Status update function.
- * @param {Function} callCallback - Callback function.
- * @param {Object} state - Object containing _microphoneAllowed flag.
- * @returns {Promise<void>}
- */
-export async function checkMicrophonePermission(updateStatus, callCallback, state, opts = {}) {
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    const error = new Error('MediaDevices API not supported, cannot check microphone.');
-    state._microphoneAllowed = false;
-    updateStatus(`Error: ${error.message}`);
-    callCallback('onError', error);
-    return;
-  }
+import { microphoneManager } from './MicrophoneManager.js';
 
+export async function checkMicrophonePermission(updateStatus, callCallback, state, opts = {}) {
+  // Use MicrophoneManager to safely check/request permission
+  // This shares the stream if already active (e.g. visualizer) or requests a new one
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    // If caller requests the live stream (e.g., for analyser), return it and DO NOT stop tracks
+    const stream = await microphoneManager.acquire('permission-check');
+
+    // If caller requests the live stream (e.g., for analyser), return it
     if (opts.returnStream) {
       state._microphoneAllowed = true;
       callCallback('onMicrophonePermissionGranted');
+      // Caller is responsible for releasing 'permission-check' later via microphoneManager.release('permission-check')
+      // OR we should have the caller pass their own ownerId. 
+      // For legacy compat, we leave it active.
       return stream;
     }
 
-    // Default behavior: stop tracks immediately (permission-check only)
-    stream.getTracks().forEach((track) => track.stop());
+    // Default behavior: verification only. Release immediately.
+    microphoneManager.release('permission-check');
+
     state._microphoneAllowed = true;
     callCallback('onMicrophonePermissionGranted');
   } catch (error) {
     state._microphoneAllowed = false;
     callCallback('onMicrophonePermissionDenied', error);
     updateStatus('Error: Microphone access denied. Please allow it in browser settings.');
+    // Do not throw, just update state, unless caller expects throw? 
+    // Original code threw error.
     throw error;
   }
 }

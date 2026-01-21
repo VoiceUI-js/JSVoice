@@ -1,3 +1,5 @@
+import { microphoneManager } from './MicrophoneManager.js';
+
 export class AudioVisualizer {
     constructor() {
         this.audioContext = null;
@@ -14,6 +16,7 @@ export class AudioVisualizer {
         };
         this.callback = null;
         this.lastUpdateTime = 0;
+        this.consumerId = 'visualizer_' + Math.random().toString(36).substr(2, 9);
     }
 
     async start(callback, options = {}) {
@@ -22,15 +25,14 @@ export class AudioVisualizer {
         this.options = { ...this.options, ...options };
 
         try {
-            // FIX: Accept existing stream to avoid double-mic request
+            // Priority: Explicit stream -> MicrophoneManager -> navigator (fallback)
             if (options.stream) {
                 this.microphoneStream = options.stream;
-                this.ownsStream = false; // Don't stop tracks if we don't own it
+                this.ownsStream = false;
             } else {
-                this.microphoneStream = await navigator.mediaDevices.getUserMedia({
-                    audio: true,
-                });
-                this.ownsStream = true;
+                // Use Shared Manager
+                this.microphoneStream = await microphoneManager.getStream(this.consumerId);
+                this.ownsStream = false; // Manager owns it
             }
 
             const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
@@ -38,7 +40,6 @@ export class AudioVisualizer {
                 throw new Error('Web Audio API is not supported in this browser.');
             }
 
-            // FIX: Reuse context if valid, or create new one
             if (!this.audioContext || this.audioContext.state === 'closed') {
                 this.audioContext = new AudioContextCtor();
             }
@@ -51,7 +52,6 @@ export class AudioVisualizer {
             );
             this.analyser = this.audioContext.createAnalyser();
 
-            // Configure Analyser
             this.analyser.fftSize = this.options.fftSize || 2048;
             this.analyser.smoothingTimeConstant =
                 this.options.smoothingTimeConstant ?? 0.8;
@@ -61,7 +61,6 @@ export class AudioVisualizer {
             this._startLoop();
         } catch (error) {
             console.error('[JSVoice] AudioVisualizer Error:', error);
-            // Ensure cleanup on error
             this.stop();
             throw error;
         }
@@ -87,15 +86,19 @@ export class AudioVisualizer {
             this.analyser = null;
         }
 
-        if (this.microphoneStream && this.ownsStream) {
-            this.microphoneStream.getTracks().forEach((track) => track.stop());
+        // Release stream via manager
+        if (this.microphoneStream) {
+            // Note: If we passed an explicit stream (options.stream), we don't release it from manager
+            // But we didn't track if it came from manager or options clearly enough above.
+            // Improve: Manager.releaseStream only affects if we registered. 
+            // Calling it with visualizer ID is safe.
+            microphoneManager.releaseStream(this.consumerId);
+            this.microphoneStream = null;
         }
-        this.microphoneStream = null;
-        // this.ownsStream = false; // logic reset not strictly needed if we check null 
 
-        // Optimally, we KEEP the audioContext alive if we plan to reuse it, 
-        // OR close it to save resources. For a library, closing is safer to avoid limit.
         if (this.audioContext && this.audioContext.state !== 'closed') {
+            // Keep content open for performance? Or close?
+            // Closing to be safe for resource limits.
             this.audioContext.close().catch((e) => console.warn(e));
             this.audioContext = null;
         }
@@ -110,10 +113,8 @@ export class AudioVisualizer {
         const dataArray = new Uint8Array(bufferLength);
 
         const loop = (timestamp) => {
-            // Safety check
             if (!this.analyser || !this.callback) return;
 
-            // Throttle if updateIntervalMs is set
             if (this.options.updateIntervalMs > 0) {
                 if (timestamp - this.lastUpdateTime < this.options.updateIntervalMs) {
                     this.animationId = requestAnimationFrame(loop);
@@ -128,7 +129,6 @@ export class AudioVisualizer {
                 this.analyser.getByteFrequencyData(dataArray);
             }
 
-            // Process and normalize data
             const normalizedData = this._processData(dataArray);
 
             this.callback(normalizedData);
@@ -139,12 +139,10 @@ export class AudioVisualizer {
     }
 
     _processData(dataArray) {
-        // If user wants raw data (barCount matches data length), just normalize
         if (!this.options.barCount || this.options.barCount >= dataArray.length) {
             return Array.from(dataArray).map((val) => val / 255);
         }
 
-        // Downsample / Binning
         const step = Math.floor(dataArray.length / this.options.barCount);
         const result = [];
 
@@ -157,7 +155,6 @@ export class AudioVisualizer {
                 sum += dataArray[j];
             }
 
-            // Average value for this bin, normalized to 0-1
             const avg = sum / step;
             result.push(avg / 255);
         }

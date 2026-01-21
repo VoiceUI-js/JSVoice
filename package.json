@@ -29,6 +29,68 @@
     "./plugins/visualizer": {
       "import": "./src/modules/AudioVisualizer.js",
       "types": "./src/index.d.ts"
+    },
+    "./react": {
+      "import": "./src/react/index.js",
+      "types": "./src/react/index.d.ts"
+    },
+    "./react/components": {
+      "import": "./src/react/components.js"
+    },
+    "./react/kit": {
+      "import": "./src/react/kit/store.js"
+    },
+    "./react/kit/components": {
+      "import": "./src/react/kit/components.js",
+      "types": "./src/react/kit/components.d.ts"
+    },
+    "./react/kit/themes": {
+      "import": "./src/react/kit/themes/index.js"
+    },
+    "./plugins/kit": {
+      "import": "./src/plugins/kit/index.js",
+      "types": "./src/plugins/kit/index.d.ts"
+    },
+    "./ui-kit/core/store": {
+      "import": "./src/ui-kit/core/store.js",
+      "types": "./src/ui-kit/core/store.d.ts"
+    },
+    "./ui-kit/core/controller": {
+      "import": "./src/ui-kit/core/controller.js",
+      "types": "./src/ui-kit/core/controller.d.ts"
+    },
+    "./ui-kit/modules/widgets": {
+      "import": "./src/ui-kit/modules/widgets/index.js"
+    },
+    "./ui-kit/modules/widgets/components": {
+      "import": "./src/ui-kit/modules/widgets/components.js"
+    },
+    "./ui-kit/modules/rules": {
+      "import": "./src/ui-kit/modules/rules/index.js"
+    },
+    "./ui-kit/modules/links": {
+      "import": "./src/ui-kit/modules/links/index.js"
+    },
+    "./ui-kit/modules/constraints": {
+      "import": "./src/ui-kit/modules/constraints/index.js"
+    },
+    "./ui-kit/modules/bookmarks": {
+      "import": "./src/ui-kit/modules/bookmarks/index.js"
+    },
+    "./ui-kit/modules/summaries": {
+      "import": "./src/ui-kit/modules/summaries/index.js"
+    },
+    "./ui-kit/modules/voice-mode": {
+      "import": "./src/ui-kit/modules/voice-mode/index.js"
+    },
+    "./ui-kit/modules/voice-mode/components": {
+      "import": "./src/ui-kit/modules/voice-mode/components.js"
+    },
+    "./ui-kit/modules/undo": {
+      "import": "./src/ui-kit/modules/undo/index.js"
+    },
+    "./ui-kit/modules/repair": {
+      "import": "./src/ui-kit/modules/repair/index.js"
     }
   },
   "scripts": {
@@ -102,6 +164,7 @@
     "@rollup/plugin-commonjs": "^25.0.7",
     "@rollup/plugin-node-resolve": "^15.2.3",
     "@rollup/plugin-terser": "^0.4.4",
+    "@xenova/transformers": "^2.17.2",
     "babel-jest": "^30.1.2",
     "eslint": "^8.56.0",
     "jest": "^29.7.0",

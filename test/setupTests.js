@@ -158,7 +158,16 @@ beforeEach(() => {
   document.body.innerHTML = '';
   delete global.mockButtonClick;
 
-  jest.spyOn(console, 'warn').mockImplementation(() => {});
-  jest.spyOn(console, 'error').mockImplementation(() => {});
-  jest.spyOn(console, 'log').mockImplementation(() => {});
+  jest.spyOn(console, 'warn').mockImplementation(() => { });
+  jest.spyOn(console, 'error').mockImplementation(() => { });
+  jest.spyOn(console, 'log').mockImplementation(() => { });
 });
+
+// Polyfill crypto for UUID generation
+if (!global.crypto) {
+  global.crypto = {
+    randomUUID: () => 'test-uuid-' + Math.random().toString(36).substr(2, 9)
+  };
+} else if (!global.crypto.randomUUID) {
+  global.crypto.randomUUID = () => 'test-uuid-' + Math.random().toString(36).substr(2, 9);
+}
