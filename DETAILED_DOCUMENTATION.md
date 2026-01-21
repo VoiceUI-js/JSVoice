@@ -1,906 +1,354 @@
-# JSVoice - Detailed Documentation
+# JSVoice: The Official Manual
 
-**Version:** 0.2.1  
-**Last Updated:** December 27, 2025
+**The World-Class Web Voice Library**
 
----
-
-## Table of Contents
-
-1. [Introduction](#introduction)
-2. [Installation](#installation)
-3. [Quick Start](#quick-start)
-4. [Core Concepts](#core-concepts)
-5. [API Reference](#api-reference)
-6. [Built-in Commands](#built-in-commands)
-7. [Custom Commands](#custom-commands)
-8. [Pattern Commands](#pattern-commands)
-9. [Wake Word Mode](#wake-word-mode)
-10. [Amplitude Visualization](#amplitude-visualization)
-11. [Configuration Options](#configuration-options)
-12. [Event Callbacks](#event-callbacks)
-13. [Browser Compatibility](#browser-compatibility)
-14. [Troubleshooting](#troubleshooting)
-15. [Examples](#examples)
-16. [Best Practices](#best-practices)
+> **Current Version:** v2.4.2  
+> **Status:** Production Ready  
+> **License:** MIT  
 
 ---
 
-## Introduction
+## 1. Introduction
 
-JSVoice is a lightweight, zero-dependency JavaScript library that brings voice command and speech synthesis capabilities to web applications. It leverages the browser's built-in Web Speech API to provide a seamless voice-interactive experience.
+**JSVoice** is a production-grade JavaScript library that enables voice interaction in web applications. It serves as a robust wrapper around the standard [Web Speech API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API), normalizing inconsistent browser behaviors and adding a powerful command management layer.
 
-### Key Features
+### What It Does
+*   **Normalizes Speech Recognition:** Handles differences between Chrome, Edge, Safari, and mobile browsers.
+*   **Manages State:** Tracks microphone permissions, listening states, and engine lifecycles.
+*   **Parses Commands:** Matches spoken phrases to functions, including variable extraction (e.g., "Set volume to 50%").
+*   **Isolates Context:** Supports "Scopes" to enable/disable commands based on the active UI screen.
+*   **Synthesizes Speech:** Provides a clean text-to-speech API.
 
-- 🎤 **Voice Recognition** - Convert speech to text
-- 🗣️ **Speech Synthesis** - Convert text to speech
-- 🎯 **Custom Commands** - Define your own voice commands
-- 🔍 **Pattern Matching** - Extract variables from commands
-- 🎙️ **Wake Word Detection** - Hands-free activation
-- 🔧 **Zero Dependencies** - No external libraries required
-- 📦 **Small Bundle** - Lightweight and fast
-
----
-
-## Installation
-
-### Via NPM
-
-```bash
-npm install jsvoice
-```
-
-### Via CDN (UMD)
-
-```html
-<script src="https://unpkg.com/jsvoice/dist/voice-ui.umd.min.js"></script>
-```
-
-### ES Module
-
-```javascript
-import JSVoice from 'jsvoice';
-```
-
-### CommonJS
-
-```javascript
-const JSVoice = require('jsvoice');
-```
+### What It Is NOT
+*   **Not a Cloud Service:** It does not stream audio to JSVoice servers. It strictly uses the browser's native capabilities (which may stream to Google/Apple depending on the browser vendor).
+*   **Not an NLU/LLM:** It does not "understand" intent like ChatGPT. It matches defined phrases and patterns.
+*   **Not a Magic Wand:** It cannot bypass browser security rules (e.g., must be triggered by a user click).
 
 ---
 
-## Quick Start
-
-### Basic Example
-
-```html
-<!DOCTYPE html>
-<html>
-<head>
-  <title>JSVoice Demo</title>
-</head>
-<body>
-  <button id="micBtn">🎤 Start Listening</button>
-  <p id="status">Click the button to start</p>
-
-  <script type="module">
-    import JSVoice from './node_modules/jsvoice/dist/voice-ui.esm.js';
-
-    const voice = new JSVoice({
-      onStatusChange: (msg) => {
-        document.getElementById('status').textContent = msg;
-      }
-    });
-
-    // Add a custom command
-    voice.addCommand('hello world', () => {
-      alert('Hello, World!');
-      voice.speak('Hello to you too!');
-    });
-
-    // Toggle listening on button click
-    document.getElementById('micBtn').addEventListener('click', () => {
-      voice.toggle();
-    });
-  </script>
-</body>
-</html>
-```
-
----
-
-## Core Concepts
-
-### 1. Voice Recognition
-
-Voice recognition converts spoken words into text. JSVoice uses the browser's `SpeechRecognition` API.
-
-```javascript
-const voice = new JSVoice();
-await voice.start(); // Start listening
-voice.stop();        // Stop listening
-voice.toggle();      // Toggle on/off
-```
-
-### 2. Speech Synthesis
-
-Speech synthesis converts text into spoken words using the browser's `speechSynthesis` API.
-
-```javascript
-voice.speak('Hello, how are you?');
-voice.speak('Hola', 'es-ES'); // Spanish
-```
-
-### 3. Commands
-
-Commands are phrases that trigger specific actions when recognized.
-
-**Types of Commands:**
-- **Built-in Commands** - Pre-defined actions (scroll, zoom, click, etc.)
-- **Custom Commands** - Your own exact phrase commands
-- **Pattern Commands** - Commands with variable extraction
-
-### 4. Pluggable Speech Engines
-
-JSVoice supports a pluggable architecture for speech recognition engines.
-- **NativeSpeechEngine** - Uses the browser's Web Speech API (default).
-- **Custom Engines** - You can implement your own engines (e.g., using OpenAI Whisper) by extending `BaseSpeechEngine`.
-
----
-
-## API Reference
-
-### Constructor
-
-```typescript
-new JSVoice(options?: JSVoiceOptions)
-```
-
-Creates a new JSVoice instance.
-
-**Example:**
-```javascript
-const voice = new JSVoice({
-  lang: 'en-US',
-  continuous: true,
-  autoRestart: true,
-  onCommandRecognized: (phrase, raw, result) => {
-    console.log('Command:', phrase);
-  }
-});
-```
-
----
-
-### Methods
-
-#### `start(): Promise<boolean>`
-
-Starts speech recognition.
-
-```javascript
-const started = await voice.start();
-if (started) {
-  console.log('Listening started');
-}
-```
-
-**Returns:** Promise that resolves to `true` if started successfully.
-
----
-
-#### `stop(): void`
-
-Stops speech recognition.
-
-```javascript
-voice.stop();
-```
-
----
-
-#### `toggle(): void`
-
-Toggles speech recognition on/off.
-
-```javascript
-voice.toggle(); // Start if stopped, stop if started
-```
-
----
-
-#### `speak(text: string, lang?: string): void`
-
-Speaks the given text using speech synthesis.
-
-```javascript
-voice.speak('Hello, world!');
-voice.speak('Bonjour', 'fr-FR'); // French
-```
-
-**Parameters:**
-- `text` - The text to speak
-- `lang` - Optional language code (defaults to `options.lang`)
-
----
-
-#### `addCommand(phrase: string, callback: Function): void`
-
-Registers a custom voice command.
-
-```javascript
-voice.addCommand('open menu', () => {
-  document.getElementById('menu').classList.add('open');
-});
-```
-
-**Parameters:**
-- `phrase` - The exact phrase to match
-- `callback` - Function to execute when phrase is recognized
-  - Arguments: `(rawTranscript, cleanedTranscript, speakMethod)`
-
----
-
-#### `removeCommand(phrase: string): boolean`
-
-Removes a previously registered command.
-
-```javascript
-const removed = voice.removeCommand('open menu');
-console.log(removed); // true if removed, false if not found
-```
-
----
-
-#### `addPatternCommand(pattern: string, callback: Function): void`
-
-Registers a pattern-based command with variable extraction.
-
-```javascript
-voice.addPatternCommand('set volume to {level}', (args, raw, cleaned, speak) => {
-  const volume = parseInt(args.level);
-  console.log('Setting volume to:', volume);
-  speak(`Volume set to ${volume}`);
-});
-```
-
-**Pattern Syntax:**
-- Use `{variableName}` for placeholders
-- Variables are extracted and passed to callback
-
-**Callback Arguments:**
-- `args` - Object with extracted variables
-- `rawTranscript` - Original speech text
-- `cleanedTranscript` - Processed text
-- `speakMethod` - Function to speak responses
-
----
-
-#### `removePatternCommand(pattern: string): boolean`
-
-Removes a pattern command.
-
-```javascript
-voice.removePatternCommand('set volume to {level}');
-```
-
----
-
-#### `setOption(key: string, value: any): void`
-
-Updates a configuration option.
-
-```javascript
-voice.setOption('lang', 'es-ES');
-voice.setOption('autoRestart', false);
-```
-
----
-
-
-
----
-
-### Properties
-
-#### `isListening: boolean` (read-only)
-
-Whether speech recognition is currently active.
-
-```javascript
-if (voice.isListening) {
-  console.log('Currently listening');
-}
-```
-
----
-
-#### `microphoneAllowed: boolean` (read-only)
-
-Whether microphone permission has been granted.
-
-```javascript
-if (!voice.microphoneAllowed) {
-  alert('Please allow microphone access');
-}
-```
-
----
-
-#### `isApiSupported: boolean` (read-only)
-
-Whether the Web Speech API is supported in the current browser.
-
-```javascript
-if (!voice.isApiSupported) {
-  alert('Voice commands not supported in this browser');
-}
-```
-
----
-
-#### `voiceFeedback: string` (read-only)
-
-Latest status message.
-
-```javascript
-console.log(voice.voiceFeedback);
-// "Listening for commands..."
-```
-
----
-
-#### `isWakeWordModeActive: boolean` (read-only)
-
-Whether wake word mode is currently active.
-
-```javascript
-if (voice.isWakeWordModeActive) {
-  console.log('Waiting for wake word');
-}
-```
-
----
-
-#### `isAwaitingCommand: boolean` (read-only)
-
-Whether the system is awaiting a command after wake word detection.
-
-```javascript
-if (voice.isAwaitingCommand) {
-  console.log('Wake word detected, listening for command');
-}
-```
-
----
-
-### Static Properties
-
-#### `JSVoice.isApiSupported: boolean`
-
-Static check for Web Speech API support.
-
-```javascript
-if (JSVoice.isApiSupported) {
-  const voice = new JSVoice();
-} else {
-  console.log('Browser not supported');
-}
-```
-
----
-
-## Built-in Commands
-
-JSVoice comes with several built-in commands for common web interactions.
-
-### Scrolling Commands
-
-| Command | Action |
-|---------|--------|
-| "scroll down" | Scroll down 500px |
-| "scroll up" | Scroll up 500px |
-| "scroll to bottom" | Scroll to page bottom |
-| "scroll to top" | Scroll to page top |
-| "scroll full down" | Scroll to page bottom |
-| "scroll full up" | Scroll to page top |
-
-### Zoom Commands
-
-| Command | Action |
-|---------|--------|
-| "zoom in" | Increase zoom by 10% |
-| "zoom out" | Decrease zoom by 10% |
-| "reset zoom" | Reset zoom to 100% |
-
-**Range:** 50% - 200%
-
-### Click Commands
-
-| Command | Action |
-|---------|--------|
-| "click [text]" | Click element containing text |
-| "click button [text]" | Click button containing text |
-
-**Examples:**
-- "click submit"
-- "click button login"
-- "click the menu"
-
-### Fill Input Commands
-
-| Command | Action |
-|---------|--------|
-| "type [value] in [field]" | Fill input field |
-| "fill [value] in [field]" | Fill input field |
-
-**Examples:**
-- "type John Doe in name"
-- "fill hello@example.com in email"
-
-**Field Matching:**
-- Input `id`
-- Input `name`
-- Input `placeholder`
-- Label text
-- `aria-label`
-
-### Read Content Commands
-
-| Command | Action |
-|---------|--------|
-| "read this page" | Read entire page |
-| "read page" | Read entire page |
-| "read this paragraph" | Read nearest text block |
-| "read this" | Read selected or nearest text |
-| "read section [text]" | Read specific section |
-
-### Dark Mode Commands
-
-| Command | Action |
-|---------|--------|
-| "toggle dark mode" | Toggle dark/light theme |
-| "switch theme" | Toggle dark/light theme |
-| "dark mode on" | Enable dark mode |
-| "dark mode off" | Enable light mode |
-
-**Note:** Uses `data-theme` attribute on `<html>` element.
-
-### Open Tab Commands
-
-| Command | Action |
-|---------|--------|
-| "open new tab" | Open blank tab |
-| "open google" | Open Google |
-| "go to [site]" | Open website |
-
-**Examples:**
-- "go to github"
-- "go to youtube"
-
----
-
-## Custom Commands
-
-### Exact Phrase Commands
-
-Register commands that match exact phrases.
-
-```javascript
-// Simple command
-voice.addCommand('show menu', () => {
-  document.getElementById('menu').style.display = 'block';
-});
-
-// Command with speech response
-voice.addCommand('what time is it', (raw, cleaned, speak) => {
-  const time = new Date().toLocaleTimeString();
-  speak(`The time is ${time}`);
-});
-
-// Command with parameters
-voice.addCommand('navigate home', (raw, cleaned, speak) => {
-  window.location.href = '/';
-  speak('Navigating to home page');
-});
-```
-
----
-
-## Pattern Commands
-
-### Variable Extraction
-
-Extract variables from voice commands using patterns.
-
-```javascript
-// Single variable
-voice.addPatternCommand('set color to {color}', (args) => {
-  document.body.style.background = args.color;
-});
-// Say: "set color to blue"
-
-// Multiple variables
-voice.addPatternCommand('move {direction} by {amount}', (args) => {
-  console.log(`Moving ${args.direction} by ${args.amount}`);
-});
-// Say: "move left by 50"
-
-// With response
-voice.addPatternCommand('search for {query}', (args, raw, cleaned, speak) => {
-  const url = `https://google.com/search?q=${encodeURIComponent(args.query)}`;
-  window.open(url, '_blank');
-  speak(`Searching for ${args.query}`);
-});
-// Say: "search for javascript tutorials"
-```
-
----
-
-## Wake Word Mode
-
-### Hands-Free Activation
-
-Wake word mode allows hands-free activation of voice commands.
- 
- > **⚠️ Privacy & Battery Warning**  
- > Current implementation processes audio via the active Speech Engine (e.g. Web Speech API). 
- > - **Privacy:** In Chrome, audio is sent to Google servers for recognition.  
- > - **Battery:** Continuous listening prevents the microphone hardware from sleeping.  
- > 
- > *An on-device, offline wake word detector (WASM) is planned for v0.3.0.*
-
-```javascript
-const voice = new JSVoice({
-  wakeWord: 'hey assistant',
-  wakeWordTimeout: 5000, // 5 seconds to give command
-  onWakeWordDetected: (word) => {
-    console.log('Wake word detected:', word);
-  }
-});
-
-await voice.start();
-```
-
-**Usage:**
-1. Say the wake word: "hey assistant"
-2. System activates and listens for command
-3. Give your command within timeout period
-4. System processes command and returns to wake word mode
-
-**Example:**
-```
-User: "hey assistant"
-System: [Wake word detected, listening...]
-User: "scroll down"
-System: [Scrolls down, returns to wake word mode]
-```
-
----
-
-
-
----
-
----
-
-## Custom Speech Engines
-
-JSVoice allows you to use custom speech recognition providers (like OpenAI Whisper, Azure Speech, etc.) by creating a custom engine.
-
-### Creating a Custom Engine
-
-To create a custom engine, extend the `BaseSpeechEngine` class and implement the required methods.
-
-```javascript
-import { BaseSpeechEngine } from 'jsvoice';
-
-class WhisperEngine extends BaseSpeechEngine {
-  async init() {
-    // Initialize your Whisper client or WebSocket connection
-    console.log('Whisper Engine Initialized');
-  }
-
-  async start() {
-    this.isListening = true;
-    this.onStart(); // Notify JSVoice
-    // Start capturing audio and sending to Whisper
-  }
-
-  async stop() {
-    this.isListening = false;
-    this.onEnd(); // Notify JSVoice
-    // Stop capturing
-  }
-}
-```
-
-### Using a Custom Engine
-
-Pass your custom engine class or instance to the `JSVoice` constructor.
-
-```javascript
-const voice = new JSVoice({
-  engines: [WhisperEngine, NativeSpeechEngine] // Try Whisper first, fallback to Native
-});
-
-// Or force a specific instance
-const voice = new JSVoice({
-  engine: new WhisperEngine({ apiKey: '...' })
-});
-```
-
----
-
-## Configuration Options
-
-### Complete Options Reference
-
-```typescript
-interface JSVoiceOptions {
-  // Recognition Settings
-  continuous?: boolean;        // Default: true
-  interimResults?: boolean;    // Default: true
-  lang?: string;              // Default: 'en-US'
-  autoRestart?: boolean;      // Default: true
-  restartDelay?: number;      // Default: 500ms
-  
-  // Engine Settings
-  engines?: Array<Class<BaseSpeechEngine>>; // List of engine classes to try (priority order)
-  engine?: BaseSpeechEngine;               // Specific engine instance to use (overrides engines)
-
-  // Wake Word Settings
-  wakeWord?: string | null;          // Default: null
-  wakeWordTimeout?: number;          // Default: 5000ms
-  
-  // Initial Commands
-  commands?: Record<string, Function>;
-  patternCommands?: Array<{pattern: string, callback: Function}>;
-  
-  // Event Callbacks
-  onSpeechStart?: () => void;
-  onSpeechEnd?: () => void;
-  onCommandRecognized?: (phrase, raw, result, args?) => void;
-  onCommandNotRecognized?: (raw) => void;
-  onActionPerformed?: (action, payload?) => void;
-  onMicrophonePermissionGranted?: (event?) => void;
-  onMicrophonePermissionDenied?: (error) => void;
-  onWakeWordDetected?: (wakeWord) => void;
-  onError?: (error) => void;
-  onStatusChange?: (message) => void;
-}
-```
-
----
-
-## Event Callbacks
-
-### Lifecycle Events
-
-```javascript
-const voice = new JSVoice({
-  onSpeechStart: () => {
-    console.log('Started listening');
-    document.getElementById('mic').classList.add('active');
-  },
-  
-  onSpeechEnd: () => {
-    console.log('Stopped listening');
-    document.getElementById('mic').classList.remove('active');
-  },
-  
-  onCommandRecognized: (phrase, raw, result, args) => {
-    console.log('Command recognized:', phrase);
-    console.log('Raw transcript:', raw);
-    console.log('Result:', result);
-    if (args) console.log('Extracted args:', args);
-  },
-  
-  onCommandNotRecognized: (raw) => {
-    console.log('Unknown command:', raw);
-    voice.speak('Sorry, I didn\'t understand that');
-  },
-  
-  onActionPerformed: (action, payload) => {
-    console.log('Action performed:', action, payload);
-  },
-  
-  onError: (error) => {
-    console.error('Voice error:', error);
-  },
-  
-  onStatusChange: (message) => {
-    document.getElementById('status').textContent = message;
-  }
-});
-```
-
----
-
-## Browser Compatibility
-
-### Supported Browsers
-
-| Browser | Version | Support |
-|---------|---------|---------|
-| Chrome | 25+ | ✅ Full |
-| Edge | 79+ | ✅ Full |
-| Safari | 14.1+ | ⚠️ Partial |
-| Firefox | - | ❌ No |
-| Opera | 27+ | ✅ Full |
-
-### Feature Detection
-
-```javascript
-if (!JSVoice.isApiSupported) {
-  // Show fallback UI
-  document.getElementById('voice-ui').style.display = 'none';
-  document.getElementById('fallback').style.display = 'block';
-}
-```
+## 2. Installation & Setup
 
 ### Requirements
 
-- ✅ HTTPS (required for microphone access)
-- ✅ User gesture (click/tap to start)
-- ✅ Microphone permission
-- ✅ Supported browser
+| Requirement | Reason |
+| :--- | :--- |
+| **HTTPS** | Browsers block microphone access on HTTP (except localhost). |
+| **User Interaction** | `start()` must be called after a user gesture (click/tap) on many devices. |
+
+### Comparison Table
+
+| Feature | Chrome / Edge | Safari (iOS/Mac) | Firefox |
+| :--- | :--- | :--- | :--- |
+| **Recognition** | ✅ Excellent (Cloud) | ⚠️ Good (Device/Cloud) | ❌ Unsupported |
+| **Synthesis** | ✅ Excellent | ✅ Excellent | ✅ Good |
+| **Microphone** | ✅ Standard permissions | ⚠️ Strict lifecycle | ✅ Standard permissions |
+
+*Note: JSVoice automatically detects browser support via `JSVoice.isApiSupported`.*
+
+### Install via NPM/Yarn
+
+```bash
+npm install jsvoice
+# or
+yarn add jsvoice
+```
+
+### ES Module Usage
+
+```javascript
+import { createVoice } from 'jsvoice';
+
+const voice = createVoice();
+```
+
+### CDN Usage (Prototyping)
+
+```html
+<script src="https://unpkg.com/jsvoice/dist/voice-ui.umd.min.js"></script>
+<script>
+  const voice = JSVoice.createVoice();
+</script>
+```
 
 ---
 
-## Troubleshooting
+## 3. Core Concepts
 
-### Common Issues
+### The Voice Lifecycle
 
-#### "Microphone access denied"
+1.  **Idle:** Engine is sleeping.
+2.  **Starting:** `voice.start()` called. Permission requested.
+3.  **Listening:** Microphone is active. Engine processes audio.
+4.  **Processing:** User stopped speaking; browser calculates final result.
+5.  **Match:** Result matches a command -> Callback execution.
+6.  **No Match:** Result does not match -> `onCommandNotRecognized` fires.
 
-**Solution:**
+### Command Resolution (O(1) vs O(N))
+*   **Exact Commands:** Uses a Hash Map (O(1)). Lightning fast. Preferred for 90% of use cases.
+*   **Pattern Commands:** Uses Regex iteration (O(N)). Slightly slower but allows variables (`{val}`).
+
+### Scopes
+Commands can be "Global" (always active) or "Scoped" (active only when a specific screen is visible). This prevents command collisions (e.g., "Save" doing different things on different pages).
+
+---
+
+## 4. Quick Start (5-Minute Success)
+
+Copy this into your main JavaScript file. This example handles permission errors and feedback loops correctly.
+
 ```javascript
-voice.start().catch((error) => {
-  if (error.name === 'NotAllowedError') {
-    alert('Please allow microphone access in browser settings');
+import { createVoice } from 'jsvoice';
+
+// 1. Initialize
+const voice = createVoice({
+  debug: true, // See logs in console
+  onStatusChange: (msg) => console.log('Status:', msg),
+});
+
+// 2. Add a Command
+voice.addCommand('hello computer', () => {
+  voice.speak('Hello human. Systems operational.');
+});
+
+// 3. Connect to UI (MANDATORY: Must be user-triggered)
+document.getElementById('mic-btn').addEventListener('click', async () => {
+  if (voice.isListening) {
+    voice.stop();
+  } else {
+    try {
+      await voice.start();
+    } catch (err) {
+      alert('Microphone denied: ' + err.message);
+    }
   }
 });
 ```
 
-#### "No speech detected"
+---
 
-**Causes:**
-- Microphone not working
-- Background noise
-- Speaking too quietly
+## 5. API Reference
 
-**Solution:**
-- Check microphone settings
-- Speak clearly and loudly
-- Reduce background noise
+> **Note:** Only public, stable APIs are listed here.
 
-#### "Commands not recognized"
+### `const voice = createVoice(options)`
+Creates a singleton instance. See Configuration Options below.
 
-**Solution:**
-- Speak clearly
-- Check language setting
-- Verify command spelling
-- Use exact phrases
+### `voice.start(): Promise<boolean>`
+Starts the engine. Rejects if microphone permission is denied.
+*   **Returns:** `true` if started, `false` if already running.
+*   **Throws:** `Error` if permission denied or browser unsupported.
 
-#### "Auto-restart not working"
+### `voice.stop(): void`
+Stops listening immediately.
 
-**Solution:**
-```javascript
-voice.setOption('autoRestart', true);
-voice.setOption('restartDelay', 500);
-```
+### `voice.addCommand(phrase, callback, options)`
+Registers a voice command.
+
+| Parameter | Type | Description |
+| :--- | :--- | :--- |
+| `phrase` | `string` | The text to listen for (e.g., "scroll down"). |
+| `callback` | `function` | Function to run on match. Receives extracted args. |
+| `options` | `object` | `{ priority: 0, scope: 'global', minConfidence: 0.8 }` |
+
+### `voice.setScope(scopeName)`
+Switches the active command scope. Only "global" commands and commands matching `scopeName` will be active.
+
+### `voice.pushScope(scopeName) / voice.popScope()`
+Manages a stack of scopes. Useful for modals or nested UI components.
+
+### `voice.speak(text, lang)`
+Synthesizes speech.
+*   `text` (string): Text to speak.
+*   `lang` (string, optional): e.g., 'en-US'. Defaults to initialization language.
 
 ---
 
-## Examples
+## 6. Configuration Options
 
-See the `examples/` directory for complete working examples:
-
-1. **Mic Waveform** - Real-time audio visualization
-2. **Real-Time Demo** - Low-latency audio capture
-3. **Theme Toggle** - Dark/light mode switching
-
----
-
-## Best Practices
-
-### 1. Always Check API Support
-
-```javascript
-if (JSVoice.isApiSupported) {
-  const voice = new JSVoice();
-} else {
-  // Show fallback UI
+```typescript
+interface JSVoiceOptions {
+  // Core
+  lang?: string;              // 'en-US' (default)
+  continuous?: boolean;       // true (default) - Keep listening after results
+  interimResults?: boolean;   // true (default) - See text while speaking
+  
+  // Stability
+  autoRestart?: boolean;      // true - Restart if engine crashes/stops
+  restartDelay?: number;      // 500ms
+  
+  // Debugging
+  debug?: boolean;            // false - Enable verbose logging
+  
+  // Callbacks
+  onStatusChange?: (msg: string) => void;
+  onCommandRecognized?: (phrase: string, args: object) => void;
+  onCommandNotRecognized?: (transcript: string) => void;
+  onError?: (error: Error) => void;
 }
 ```
 
-### 2. Provide Visual Feedback
+---
+
+## 7. Commands System
+
+### Exact Commands (Preferred)
+These are optimized for speed.
 
 ```javascript
-const voice = new JSVoice({
-  onStatusChange: (msg) => {
-    statusElement.textContent = msg;
-  }
+// High priority command (beats others)
+voice.addCommand('emergency stop', stopMachine, { priority: 100 });
+```
+
+### Pattern Commands
+Use curly braces `{}` to capture variables. Type inference is automatic where possible.
+
+```javascript
+voice.addCommand('move {direction} by {pixels:int} pixels', (args) => {
+  // args = { direction: "left", pixels: 50 }
+  moveObject(args.direction, args.pixels);
+}, { isPattern: true });
+```
+
+**Supported Types:**
+*   `{val}` (string, greedy)
+*   `{val:int}` (integer)
+*   `{val:number}` (float)
+*   `{val:word}` (single word)
+
+---
+
+## 8. Wake Word System
+
+> **⚠️ WARNING:** In the current version (v2.4), wake word detection requires streaming audio to the browser's recognition engine. In Chrome, this means **continuous network usage**.
+
+```javascript
+const voice = createVoice({
+  wakeWord: 'hey jarvis',
+  onWakeWordDetected: () => console.log('I am awake'),
 });
 ```
 
-### 3. Handle Errors Gracefully
+**Recommendation:** Only use this feature if you understand the privacy/network implications. For strict privacy, wait for the v3.0 Local WASM engine.
+
+---
+
+## 9. Audio Visualization
+
+Visualizing audio amplitude requires opening a separate `AudioContext`. 
+
+> **Performance Note:** This creates a second media stream in some browsers, which may show a "recording" indicator twice.
 
 ```javascript
-const voice = new JSVoice({
-  onError: (error) => {
-    console.error(error);
-    showErrorMessage('Voice command failed. Please try again.');
-  }
+import VisualizerPlugin from 'jsvoice/plugins/visualizer';
+
+voice.use(VisualizerPlugin);
+
+voice.startAmplitude((levels) => {
+  // levels = [128, 200, 150, ...] (Frequency data)
+  drawWaveform(levels);
 });
 ```
 
-### 4. Use Clear Command Phrases
-
-```javascript
-// ✅ Good - Clear and specific
-voice.addCommand('open settings menu', openSettings);
-
-// ❌ Bad - Ambiguous
-voice.addCommand('open', doSomething);
-```
-
-### 5. Provide Speech Feedback
-
-```javascript
-voice.addCommand('delete item', (raw, cleaned, speak) => {
-  deleteItem();
-  speak('Item deleted successfully');
-});
-```
-
-### 6. Clean Up Resources
-
-```javascript
-// When done with amplitude visualization
-voice.stopAmplitude();
-
-// When done with voice recognition
-voice.stop();
-```
+**Cleanup:** Always call `voice.stopAmplitude()` when unmounting components to prevent memory leaks.
 
 ---
 
-## TypeScript Support
+## 10. React / Framework Integration
 
-JSVoice includes full TypeScript definitions.
+JSVoice is framework-agnostic, but relies on a singleton pattern.
 
-```typescript
-import JSVoice, { JSVoiceOptions } from 'jsvoice';
+### React Pattern
 
-const options: JSVoiceOptions = {
-  lang: 'en-US',
-  continuous: true,
-  onCommandRecognized: (phrase, raw, result) => {
-    console.log(phrase);
-  }
-};
+```jsx
+// hooks/useVoice.js
+import { useEffect } from 'react';
+import { createVoice } from 'jsvoice';
 
-const voice = new JSVoice(options);
+// Create singleton OUTSIDE component
+const voice = createVoice(); 
+
+export function useVoice() {
+  useEffect(() => {
+    return () => voice.stop(); // Cleanup on unmount
+  }, []);
+  return voice;
+}
 ```
 
----
-
-## License
-
-MIT © JSVoice Contributors
+**SSR Warning:** `createVoice` checks for `window`. In Next.js/Nuxt, ensure you only initialize inside `useEffect` or check `typeof window !== 'undefined'`.
 
 ---
 
-## Support
+## 11. Error Handling & Debugging
 
-- **GitHub Issues:** https://github.com/VoiceUI-js/VoiceUI/issues
-- **Documentation:** This file
-- **Examples:** `examples/` directory
+### Debug Mode
+Enable `debug: true` in options to see:
+*   Partial transcripts
+*   Confidence scores
+*   Command match failures
+*   State transitions
+
+### Common Errors
+
+1.  **`NotAllowedError`**: User denied microphone.
+    *   *Fix:* Show a UI dialog instructing them to unblock it in the URL bar.
+2.  **`NetworkError`** (Chrome): Client is offline.
+    *   *Fix:* Chrome requires internet for high-quality recognition. Use offline fallback if available.
+3.  **`Aborted`**: Another app took the mic, or the tab went to background (mobile).
+    *   *Fix:* `autoRestart: true` usually handles this.
 
 ---
 
-**Last Updated:** December 27, 2025  
-**Version:** 0.2.1
+## 12. Security & Privacy
+
+### No Data Collection
+JSVoice does **not** collect, store, or transmit your audio. 
+
+### Browser Vendors
+*   **Chrome:** Streams audio to Google Cloud (unless using on-device Speech API, available in newer Pixel phones).
+*   **Safari/iOS:** May handle on-device or send to Apple.
+*   **Firefox:** Not supported.
+
+### Best Practice
+Always include a clear "Listening" indicator in your UI. Never record without user consent.
+
+---
+
+## 13. FAQ
+
+**Q: Why doesn't this work in Firefox?**
+A: Mozilla has not implemented the Web Speech API (`SpeechRecognition`). There is no workaround without using a third-party paid API or our experimental WASM engine.
+
+**Q: Can I use this completely offline?**
+A: Only on browsers that support on-device recognition (e.g., Safari on newer iOS, Chrome on Pixel). For 100% offline guarantee on all devices, you need our `LocalWhisperEngine` (separate plugin, currently beta).
+
+**Q: Is it safe for production?**
+A: Yes, validation logic and cleanup routines are robust. However, you must handle the reality that browser speech APIs can be fickle (e.g., stopping randomly). Utilize the `autoRestart` option.
+
+---
+
+## 14. Versioning & Roadmap
+
+JSVoice follows [Semantic Versioning](https://semver.org/).
+
+*   **v2.4.x (Current):** Stability, O(1) matching, critical bug fixes.
+*   **v3.0 (Planned):**
+    *   Local WASM Wake Word (Privacy first)
+    *   Full offline engine via Transformers.js as a core option
+    *   State Machine architecture refactor
+
+### Deprecations
+*   `addPatternCommand` is deprecated. Use `addCommand(..., { isPattern: true })`.
+
+---
+
+## 15. Contributing
+
+We welcome PRs! 
+
+1.  **Fork** the repo.
+2.  **Clone** locally.
+3.  **Run Tests:** `npm test`.
+4.  **Lint:** `npm run lint`.
+
+Please verify that your changes pass the new **CommandManager** test suite before submitting.
