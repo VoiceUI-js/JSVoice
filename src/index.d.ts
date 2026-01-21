@@ -75,7 +75,13 @@ declare module 'jsvoice' {
         isPattern?: boolean; // Force pattern mode
     }
 
-    // ... (AmplitudeOptions) ...
+    export interface AmplitudeOptions {
+        mode?: 'bars' | 'waveform';
+        barCount?: number;
+        fftSize?: number;
+        smoothingTimeConstant?: number;
+        updateIntervalMs?: number;
+    }
 
     export class BaseSpeechEngine {
         constructor(options?: any);
@@ -116,6 +122,8 @@ declare module 'jsvoice' {
 
         // Scopes
         setScope(name: string): void;
+        pushScope(name: string): void;
+        popScope(): string;
         resetScope(): void;
 
         setOption(key: keyof JSVoiceOptions, value: any): void;
