@@ -27,6 +27,7 @@ export default function VadPlugin(voice, options = {}) {
     let intervalId = null;
     let silenceStart = null;
     let isSpeaking = false;
+    let dataArray = null; // Reusable buffer for minimal GC
 
     // Hook into JSVoice Start
     const originalStart = voice.start;
@@ -64,6 +65,12 @@ export default function VadPlugin(voice, options = {}) {
             source = audioContext.createMediaStreamSource(stream);
             source.connect(analyser);
 
+            source.connect(analyser);
+
+            // Pre-allocate buffer for performance
+            const bufferLength = analyser.frequencyBinCount;
+            dataArray = new Uint8Array(bufferLength);
+
             intervalId = setInterval(processVadFrame, config.updateInterval);
 
         } catch (e) {
@@ -72,10 +79,8 @@ export default function VadPlugin(voice, options = {}) {
     }
 
     function processVadFrame() {
-        if (!analyser) return;
+        if (!analyser || !dataArray) return;
 
-        const bufferLength = analyser.frequencyBinCount;
-        const dataArray = new Uint8Array(bufferLength);
         analyser.getByteTimeDomainData(dataArray);
         const rms = calculateRMS(dataArray);
 

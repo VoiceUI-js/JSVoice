@@ -65,8 +65,8 @@ export function ConfirmationOverlay() {
     }, React.createElement('h3', { style: { margin: '0 0 16px 0' } }, 'Confirm Action?'),
         React.createElement('p', { style: { color: 'var(--jv-text-secondary)', marginBottom: '24px' } }, label || 'Are you sure you want to proceed?'),
         React.createElement('div', { style: { display: 'flex', gap: '16px', justifyContent: 'center' } },
-            React.createElement('button', { onClick: () => KitActions.resolveConfirmation(false), style: { padding: '12px 24px', borderRadius: 'var(--jv-radius-md)', background: 'var(--jv-bg-panel)', color: 'var(--jv-text-primary)', border: '1px solid var(--jv-border)' } }, 'Cancel'),
-            React.createElement('button', { onClick: () => KitActions.resolveConfirmation(true), style: { padding: '12px 24px', borderRadius: 'var(--jv-radius-md)', background: 'var(--jv-danger)', color: 'white', border: 'none' } }, 'Confirm')
+            React.createElement('button', { onClick: () => KitActions.resolveConfirmation(false), 'aria-label': 'Cancel action', style: { padding: '12px 24px', borderRadius: 'var(--jv-radius-md)', background: 'var(--jv-bg-panel)', color: 'var(--jv-text-primary)', border: '1px solid var(--jv-border)' } }, 'Cancel'),
+            React.createElement('button', { onClick: () => KitActions.resolveConfirmation(true), 'aria-label': 'Confirm action', style: { padding: '12px 24px', borderRadius: 'var(--jv-radius-md)', background: 'var(--jv-danger)', color: 'white', border: 'none' } }, 'Confirm')
         )));
 }
 
@@ -104,7 +104,7 @@ export function FilterBar() {
 
     return React.createElement('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap', padding: '10px 0' } },
         filters.map((f) => React.createElement('span', { key: f, style: { background: 'var(--jv-accent)', color: 'white', padding: '4px 12px', borderRadius: 16, fontSize: 12 } },
-            f, React.createElement('button', { onClick: () => { }, style: { background: 'none', border: 'none', color: 'white', marginLeft: 6, cursor: 'pointer' } }, '×')))
+            f, React.createElement('button', { onClick: () => { }, 'aria-label': 'Remove filter', style: { background: 'none', border: 'none', color: 'white', marginLeft: 6, cursor: 'pointer' } }, '×')))
     );
 }
 
