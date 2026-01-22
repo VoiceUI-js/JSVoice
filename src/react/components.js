@@ -34,7 +34,7 @@ const styles = {
 };
 
 export function VoiceHUD({ position = 'bottom-right' }) {
-    const voice = useVoice();
+    // voice is unused here
     const status = useVoiceStatus(s => s.status);
     const transcript = useVoiceStatus(s => s.transcript);
 

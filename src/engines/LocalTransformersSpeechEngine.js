@@ -21,7 +21,7 @@ class LocalTransformersSpeechEngine extends BaseSpeechEngine {
             ...options
         };
 
-        if (typeof window === 'undefined') return;
+        if (typeof globalThis.window === 'undefined') return;
         this._initStrategy();
     }
 
@@ -49,7 +49,7 @@ class LocalTransformersSpeechEngine extends BaseSpeechEngine {
         this.worker = new Worker(new URL('../workers/local-asr.worker.js', import.meta.url), { type: 'module' });
 
         this.worker.onmessage = (e) => {
-            const { type, data, status, transcript, error, isFinal } = e.data;
+            const { type, data, transcript, error, isFinal } = e.data;
 
             this._emitTelemetry({ type: 'worker_msg', msgType: type });
 
@@ -96,7 +96,7 @@ class LocalTransformersSpeechEngine extends BaseSpeechEngine {
             this.isListening = true;
             this.audioChunks = [];
 
-            this.audioContext = new (window.AudioContext || window.webkitAudioContext)({
+            this.audioContext = new (globalThis.AudioContext || globalThis.webkitAudioContext)({
                 sampleRate: this.options.captureSampleRate
             });
 

@@ -1,4 +1,5 @@
 'use client';
+/* eslint-disable react/prop-types */
 
 import React, { useState } from 'react';
 import { createVoice } from 'jsvoice';
@@ -23,7 +24,7 @@ import { VoiceKitTheme } from 'jsvoice/react/kit/themes';
 
 function KitPlayground() {
     const [voice] = useState(() => {
-        if (typeof window === 'undefined') return null;
+        if (typeof globalThis.window === 'undefined') return null;
         const v = createVoice();
         v.use(WidgetPlugin);
         v.use(RulesPlugin);

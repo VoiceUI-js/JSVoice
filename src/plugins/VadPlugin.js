@@ -55,7 +55,7 @@ export default function VadPlugin(voice, options = {}) {
             // NOTE: Acquiring 'vad' owner.
             const stream = await microphoneManager.acquire('vad');
 
-            const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
+            const AudioContextCtor = globalThis.window.AudioContext || globalThis.window.webkitAudioContext;
             audioContext = new AudioContextCtor();
             analyser = audioContext.createAnalyser();
             analyser.fftSize = 512;
@@ -64,49 +64,57 @@ export default function VadPlugin(voice, options = {}) {
             source = audioContext.createMediaStreamSource(stream);
             source.connect(analyser);
 
-            const bufferLength = analyser.frequencyBinCount;
-            const dataArray = new Uint8Array(bufferLength);
-
-            intervalId = setInterval(() => {
-                if (!analyser) return;
-
-                analyser.getByteTimeDomainData(dataArray);
-                const rms = calculateRMS(dataArray);
-
-                // State Logic
-                if (rms > config.energyThreshold) {
-                    // Speech detected
-                    if (!isSpeaking) {
-                        isSpeaking = true;
-                        if (voice.options.onTelemetry) {
-                            voice.options.onTelemetry({ type: 'vad_speech_start', rms });
-                        }
-                        // Optional: emit to core if supported?
-                    }
-                    silenceStart = null;
-                } else {
-                    // Silence
-                    if (isSpeaking) {
-                        if (!silenceStart) silenceStart = Date.now();
-
-                        const duration = Date.now() - silenceStart;
-                        if (duration > config.silenceMs) {
-                            isSpeaking = false;
-                            if (voice.options.onTelemetry) {
-                                voice.options.onTelemetry({ type: 'vad_speech_end', duration });
-                            }
-
-                            if (config.autoEndpoint) {
-                                console.log('[JSVoice] VAD Auto-Endpoint triggered.');
-                                voice.stop();
-                            }
-                        }
-                    }
-                }
-            }, config.updateInterval);
+            intervalId = setInterval(processVadFrame, config.updateInterval);
 
         } catch (e) {
             console.error('[JSVoice-VAD] Error starting VAD:', e);
+        }
+    }
+
+    function processVadFrame() {
+        if (!analyser) return;
+
+        const bufferLength = analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+        analyser.getByteTimeDomainData(dataArray);
+        const rms = calculateRMS(dataArray);
+
+        // State Logic
+        if (rms > config.energyThreshold) {
+            handleSpeechDetected(rms);
+        } else {
+            handleSilence();
+        }
+    }
+
+    function handleSpeechDetected(rms) {
+        // Speech detected
+        if (!isSpeaking) {
+            isSpeaking = true;
+            if (voice.options.onTelemetry) {
+                voice.options.onTelemetry({ type: 'vad_speech_start', rms });
+            }
+        }
+        silenceStart = null;
+    }
+
+    function handleSilence() {
+        // Silence
+        if (isSpeaking) {
+            if (!silenceStart) silenceStart = Date.now();
+
+            const duration = Date.now() - silenceStart;
+            if (duration > config.silenceMs) {
+                isSpeaking = false;
+                if (voice.options.onTelemetry) {
+                    voice.options.onTelemetry({ type: 'vad_speech_end', duration });
+                }
+
+                if (config.autoEndpoint) {
+                    console.log('[JSVoice] VAD Auto-Endpoint triggered.');
+                    voice.stop();
+                }
+            }
         }
     }
 

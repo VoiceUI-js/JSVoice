@@ -1,22 +1,23 @@
 import { microphoneManager } from './MicrophoneManager.js';
 
 export class AudioVisualizer {
+    audioContext = null;
+    analyser = null;
+    microphoneStream = null;
+    source = null;
+    animationId = null;
+    options = {
+        mode: 'bars', // 'bars' | 'waveform'
+        barCount: 32,
+        fftSize: 2048,
+        smoothingTimeConstant: 0.8,
+        updateIntervalMs: 0, // 0 = use requestAnimationFrame
+    };
+    callback = null;
+    lastUpdateTime = 0;
+    consumerId = 'visualizer_' + Math.random().toString(36).substring(2, 11);
+
     constructor() {
-        this.audioContext = null;
-        this.analyser = null;
-        this.microphoneStream = null;
-        this.source = null;
-        this.animationId = null;
-        this.options = {
-            mode: 'bars', // 'bars' | 'waveform'
-            barCount: 32,
-            fftSize: 2048,
-            smoothingTimeConstant: 0.8,
-            updateIntervalMs: 0, // 0 = use requestAnimationFrame
-        };
-        this.callback = null;
-        this.lastUpdateTime = 0;
-        this.consumerId = 'visualizer_' + Math.random().toString(36).substr(2, 9);
     }
 
     async start(callback, options = {}) {
@@ -35,7 +36,7 @@ export class AudioVisualizer {
                 this.ownsStream = false; // Manager owns it
             }
 
-            const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
+            const AudioContextCtor = globalThis.window.AudioContext || globalThis.window.webkitAudioContext;
             if (!AudioContextCtor) {
                 throw new Error('Web Audio API is not supported in this browser.');
             }
@@ -75,14 +76,18 @@ export class AudioVisualizer {
         if (this.source) {
             try {
                 this.source.disconnect();
-            } catch (e) { /* ignore */ }
+            } catch (e) {
+                // Ignore disconnect error if already disconnected
+            }
             this.source = null;
         }
 
         if (this.analyser) {
             try {
                 this.analyser.disconnect();
-            } catch (e) { /* ignore */ }
+            } catch (e) {
+                // Ignore disconnect error
+            }
             this.analyser = null;
         }
 

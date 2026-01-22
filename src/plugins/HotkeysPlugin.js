@@ -15,7 +15,7 @@ export default function HotkeysPlugin(voice, options = {}) {
         ...options
     };
 
-    if (typeof window === 'undefined') return;
+    if (typeof globalThis.window === 'undefined') return;
 
     let isKeyDown = false;
 

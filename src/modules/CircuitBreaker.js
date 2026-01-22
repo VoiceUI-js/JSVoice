@@ -23,10 +23,8 @@ export class CircuitBreaker {
 
         this.failures.push({ time: now, type: errorType });
 
-        if (this.state === 'closed' && this.failures.length >= this.config.threshold) {
-            this._transition('open');
-        } else if (this.state === 'half_open') {
-            // If we fail in half_open, immediately go back to open
+        if ((this.state === 'closed' && this.failures.length >= this.config.threshold) ||
+            this.state === 'half_open') {
             this._transition('open');
         }
     }

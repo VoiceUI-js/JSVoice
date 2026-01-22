@@ -11,8 +11,8 @@ import { CommandManager } from './modules/CommandManager.js';
 class JSVoice {
   static get isApiSupported() {
     // Only check if window exists (SSR Guard)
-    if (typeof window === 'undefined') return false;
-    return !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+    if (typeof globalThis.window === 'undefined') return false;
+    return !!(globalThis.window.SpeechRecognition || globalThis.window.webkitSpeechRecognition);
   }
 
   constructor(options = {}) {
@@ -100,7 +100,8 @@ class JSVoice {
      * @param {Function} plugin - Function receiving a restricted API
      */
     this.use = (plugin) => {
-      const _self = this;
+      // Capture instance for inner object
+      const voiceInstance = this;
       if (typeof plugin === 'function') {
         const pluginApi = {
           // Public Methods
@@ -122,11 +123,11 @@ class JSVoice {
           resetScope: this.resetScope.bind(this),
 
           // Getters (read-only)
-          get isListening() { return this.isListening; },
-          get microphoneAllowed() { return this.microphoneAllowed; },
-          get voiceFeedback() { return this.voiceFeedback; },
+          get isListening() { return voiceInstance.isListening; },
+          get microphoneAllowed() { return voiceInstance.microphoneAllowed; },
+          get voiceFeedback() { return voiceInstance.voiceFeedback; },
           get isApiSupported() { return JSVoice.isApiSupported; },
-          get options() { return { ..._self.options }; }
+          get options() { return { ...voiceInstance.options }; }
         };
 
         plugin(pluginApi);
@@ -145,7 +146,7 @@ class JSVoice {
     }
 
     this.recognition = null;
-    this.speechSynthesis = (typeof window !== 'undefined') ? window.speechSynthesis : null;
+    this.speechSynthesis = (typeof globalThis.window !== 'undefined') ? globalThis.window.speechSynthesis : null;
 
     this._state = {
       _isListening: false,
@@ -198,7 +199,7 @@ class JSVoice {
 
     if (!engineInstance) {
       // Only log if we expected engines (i.e. browser environment)
-      if (typeof window !== 'undefined' && this.options.engines.length > 0) {
+      if (typeof globalThis.window !== 'undefined' && this.options.engines.length > 0) {
         logger.warn('No supported speech engine found.');
       }
       return;
@@ -237,9 +238,7 @@ class JSVoice {
     });
   }
 
-  _callCallback(callbackName, ...args) {
-    callCallback(this.options, callbackName, ...args);
-  }
+
 
   _updateStatus(message) {
     this._currentVoiceFeedback = message;
@@ -405,10 +404,10 @@ class JSVoice {
   }
 
   speak(text, lang = this.options.lang) {
-    if (typeof window === 'undefined') return; // SSR Guard
+    if (typeof globalThis.window === 'undefined') return; // SSR Guard
     if (!text) return;
 
-    if (!this.speechSynthesis || !window.SpeechSynthesisUtterance) {
+    if (!this.speechSynthesis || !globalThis.window.SpeechSynthesisUtterance) {
       console.warn('[JSVoice] SpeechSynthesis not supported.');
       return;
     }

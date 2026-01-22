@@ -27,7 +27,7 @@ class WhisperSpeechEngine extends BaseSpeechEngine {
     }
 
     static get isSupported() {
-        return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
+        return !!(globalThis.navigator?.mediaDevices?.getUserMedia && globalThis.window.MediaRecorder);
     }
 
     async init() {
@@ -146,7 +146,7 @@ class WhisperSpeechEngine extends BaseSpeechEngine {
             const data = await response.json();
             const transcript = data.text;
 
-            if (transcript && transcript.trim()) {
+            if (transcript?.trim()) {
                 this.onResult(transcript, true); // true = isFinal
             } else {
                 // No speech detected is not necessarily an error, but worth noting

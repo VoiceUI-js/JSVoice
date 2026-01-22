@@ -6,6 +6,7 @@ export const metadata = {
     description: 'Pro-grade Voice UI Kit for React',
 };
 
+/* eslint-disable react/prop-types */
 export default function RootLayout({ children }) {
     return (
         <html lang="en">

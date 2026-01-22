@@ -38,7 +38,7 @@ class HybridSpeechEngine extends BaseSpeechEngine {
     }
 
     async init() {
-        if (typeof window === 'undefined') return; // SSR Safety
+        if (typeof globalThis.window === 'undefined') return; // SSR Safety
         await this._resolveEngine();
     }
 
@@ -65,7 +65,8 @@ class HybridSpeechEngine extends BaseSpeechEngine {
     async _setEngine(mode) {
         if (this.currentMode === mode && this.activeEngine) return;
 
-        const previousMode = this.currentMode;
+        if (this.currentMode === mode && this.activeEngine) return;
+
         this.currentMode = mode;
 
         // Emit Selection Event
@@ -121,11 +122,10 @@ class HybridSpeechEngine extends BaseSpeechEngine {
             onStateChange: (s) => this.setState(s)
         });
 
+
         // Forward strict model progress from local engine
         if (engine.onModelLoadProgress) {
             // If local engine already attached it
-        } else {
-            // monkey patch or ensure interface compliance
         }
     }
 

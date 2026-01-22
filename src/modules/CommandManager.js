@@ -78,38 +78,9 @@ export class CommandManager {
     }
 
     unregister(idOrPhrase) {
-        let cmd = null;
-
-        // 1. Try ID lookup
-        if (this.commandRegistry.has(idOrPhrase)) {
-            cmd = this.commandRegistry.get(idOrPhrase);
-        }
-
-        // 2. Try phrase lookup (slow O(N) scan of registry if not ID)
-        if (!cmd) {
-            const cleaned = cleanText(idOrPhrase);
-            for (const c of this.commandRegistry.values()) {
-                if (c.phrase === cleaned || c.originalPhrase === idOrPhrase) {
-                    cmd = c;
-                    break;
-                }
-            }
-        }
-
+        const cmd = this._findCommand(idOrPhrase);
         if (cmd) {
-            this.commandRegistry.delete(cmd.id);
-
-            if (cmd.type === 'pattern') {
-                this.patternCommands = this.patternCommands.filter(c => c.id !== cmd.id);
-            } else {
-                const bucket = this.exactCommands.get(cmd.phrase);
-                if (bucket) {
-                    const idx = bucket.findIndex(c => c.id === cmd.id);
-                    if (idx !== -1) bucket.splice(idx, 1);
-                    if (bucket.length === 0) this.exactCommands.delete(cmd.phrase);
-                }
-            }
-            return true;
+            return this._deleteCommandFromRegistry(cmd);
         }
         return false;
     }
@@ -123,140 +94,21 @@ export class CommandManager {
      * @param {Function} speakMethod 
      */
     async process(transcriptOrEvent, speakMethod) {
-        let transcript = '';
-        let confidence = 1.0;
-        let eventData = null;
-
-        if (typeof transcriptOrEvent === 'string') {
-            transcript = transcriptOrEvent;
-        } else {
-            transcript = transcriptOrEvent.text || '';
-            confidence = transcriptOrEvent.confidence || 0.0;
-            if (transcriptOrEvent.confidence === undefined) confidence = 1.0;
-            eventData = transcriptOrEvent;
-        }
-
+        const { transcript, confidence } = this._parseInput(transcriptOrEvent);
         const cleanedTranscript = cleanText(transcript);
-        const now = Date.now();
 
-        let winner = null;
-        let bestScore = -1;
+        // Find best match
+        const winner = this._findBestMatch(cleanedTranscript, confidence);
 
-        // --- OPTIMIZATION: Exact Match Lookup ---
-        const exactBucket = this.exactCommands.get(cleanedTranscript);
-        if (exactBucket) {
-            // Check scope & confidence for candidates in bucket
-            // Bucket is already sorted by priority
-            for (const cmd of exactBucket) {
-                if (cmd.scope !== 'global' && cmd.scope !== this.currentScope) continue;
-                if (confidence < cmd.minConfidence) continue;
-
-                // Found our highest priority exact match immediately
-                winner = { cmd, args: {}, score: 1000 + cmd.phrase.length };
-                break; // Because bucket is sorted, first valid one is best exact
-            }
-        }
-
-        // Only scan patterns if we don't have a high-priority exact match or if patterns might be higher priority
-        // NOTE: Exact matches usually beat patterns unless priority is forced. 
-        // Current logic: Exact = 1000 + len, Pattern = 500 + len.
-        // So a very long pattern could theoretically beat a short exact command if logic strictly follows score.
-        // But usually "Exact" is preferred.
-        // Let's check patterns if we don't have a solid winner or to find something better.
-
-        const candidates = this.patternCommands.filter(cmd =>
-            cmd.scope === 'global' || cmd.scope === this.currentScope
-        );
-
-        for (const cmd of candidates) {
-            if (confidence < cmd.minConfidence) continue;
-
-            // Optimization: If current winner score is drastically higher than potential pattern score, skip?
-            // Max pattern score approx 500 + len. If exact winner is 1000+, exact wins.
-            // Unless priority overrides?
-            // Score formula: (typeBase) + (len). Priority sorts the list but score breaks ties?
-            // Original: sort by Priority then Score.
-            // So if Pattern has High Priority (100) and Exact has Low (0), Pattern wins regardless of score text.
-
-            // We must track priority too
-            if (winner && winner.cmd.priority > cmd.priority) continue;
-            // If priorities equal, Exact (1000) usually beats Pattern (500).
-
-            const matchResult = this._checkMatch(cmd, cleanedTranscript);
-            if (matchResult.matched) {
-                const score = this._calculateScore(cmd, matchResult);
-
-                if (!winner ||
-                    (cmd.priority > winner.cmd.priority) ||
-                    (cmd.priority === winner.cmd.priority && score > winner.score)) {
-                    winner = { cmd, args: matchResult.args, score };
-                }
-            }
-        }
-
-        // ... Dispatch Logic ...
-
-        const telemetryData = {
-            type: 'command_evaluated',
-            transcript,
-            confidence,
-            matched: !!winner,
-            matchType: winner?.cmd.type,
-            winnerId: winner?.cmd.id,
-            scope: this.currentScope,
-            rejectedReason: null,
-            latencyMs: 0
-        };
+        // Telemetry Setup
+        const telemetryData = this._initTelemetryData(transcript, confidence, winner);
 
         if (winner) {
-            // 4. Cooldown Check
-            const lastRun = this.cooldowns.get(winner.cmd.id) || 0;
-            if (winner.cmd.cooldown > 0 && (now - lastRun < winner.cmd.cooldown)) {
-                telemetryData.rejectedReason = 'cooldown';
-                this._emitTelemetry(telemetryData);
-                return false;
-            }
-
-            // 5. Execution Policy (Sandbox check could go here)
-            // if (this.confirmationPolicy ...)
-
-            // Execute
-            try {
-                if (winner.cmd.cooldown > 0) {
-                    this.cooldowns.set(winner.cmd.id, now);
-                }
-
-                await winner.cmd.callback(winner.args || {}, transcript, cleanedTranscript, speakMethod);
-
-                if (winner.cmd.once) {
-                    this.unregister(winner.cmd.id);
-                }
-
-                this._emitTelemetry(telemetryData);
-                return true;
-
-            } catch (e) {
-                console.error('[JSVoice] Command Execution Error:', e);
-                telemetryData.rejectedReason = 'execution_error';
-                telemetryData.error = e.message;
-                this._emitTelemetry(telemetryData);
-                return false;
-            }
+            return await this._handleExecution(winner, transcript, cleanedTranscript, speakMethod, telemetryData);
         } else {
-            // Re-check partial matches for telemetry reason (slow but useful for debug)
-            // Only checks candidates already filtered by scope
-            const hasPartial = candidates.some(c => this._checkMatch(c, cleanedTranscript).matched) ||
-                (exactBucket && exactBucket.some(c => c.scope === 'global' || c.scope === this.currentScope));
-
-            if (hasPartial) {
-                telemetryData.rejectedReason = 'confidence_too_low';
-            } else {
-                telemetryData.rejectedReason = 'no_match';
-            }
-            this._emitTelemetry(telemetryData);
+            this._handleNoMatch(cleanedTranscript, telemetryData);
+            return false;
         }
-
-        return false;
     }
 
     // --- Scope Management ---
@@ -281,7 +133,7 @@ export class CommandManager {
             return 'global';
         }
         this.scopeStack.pop();
-        this.currentScope = this.scopeStack[this.scopeStack.length - 1];
+        this.currentScope = this.scopeStack.at(-1);
         return this.currentScope;
     }
 
@@ -305,12 +157,12 @@ export class CommandManager {
 
                 const type = match[2];
                 switch (type) {
-                    case 'number': return '(\\d+(?:[.,]\\d+)?)';
-                    case 'int': return '(\\d+)';
-                    case 'word': return '(\\w+)';
-                    case 'date': return '(?:\\d{1,4}[-/]\\d{1,2}[-/]\\d{1,4}|today|tomorrow|yesterday)';
+                    case 'number': return String.raw`(\d+(?:[.,]\d+)?)`;
+                    case 'int': return String.raw`(\d+)`;
+                    case 'word': return String.raw`(\w+)`;
+                    case 'date': return String.raw`(?: \d{1,4}[-/]\d{1,2}[-/]\d{1,4}|today|tomorrow|yesterday)`;
                     case 'any':
-                    default: return '(.+?)';
+                    default: return String.raw`(.+?)`;
                 }
             } else {
                 // It's static text: Clean it first (remove punctuation etc) then escape
@@ -320,41 +172,12 @@ export class CommandManager {
             }
         });
 
-        // Use \s* between parts to allow flexibility (since cleanText collapses spaces to single space)
-        // But cleanText usage inside map might have already handled it?
-        // If we join with '', we assume cleanText handled spaces.
-        // cleanText("Set ") -> "set" (trimmed). 
-        // cleanText(" to") -> "to" (trimmed).
-        // So "Set {x} to" -> "set" + capture + "to".
-        // Matched against "set 50 to". "set50to" wont match.
-        // Use \s+ separator?
-        // Actually, better strategy: 
-        // Use cleanText on the WHOLE RAW PHRASE (replacing vars with placeholders), then build regex? No, difficult.
-
-        // Let's rely on standard spacing. cleanText ensures single spaces.
-        // We should add optional space \s* between parts? Or require \s+ if the original had space?
-        // "Set {val}" -> "set" + var.
-
-        // Revised Strategy:
-        // Join with \s+? No.
-
-        // Let's assume strict cleaning.
-        // "Set {val}" -> parts: ["Set ", "{val}"]. 
-        // cleaned: "set", var.
-        // Regex: "^set(\d+)$". 
-        // Input: "set 10". Cleaned: "set 10".
-        // "set(\d+)" matches "set10". Fails "set 10".
-
-        // We need to inject space matchers where appropriate.
-        // Simple heuristic: If the raw part ends with space, or next start with space?
-        // cleanText collapses internal spaces to single space.
-
         // Let's use `\s*` separator between tokens.
         return new RegExp('^' + regexParts.join('\\s*') + '$', 'i');
     }
 
     _escapeRegex(string) {
-        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        return string.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&');
     }
 
     _extractArgConfigs(phrase) {
@@ -379,8 +202,8 @@ export class CommandManager {
                 cmd.argConfigs.forEach((config, index) => {
                     let val = match[index + 1];
                     // Parse Types
-                    if (config.type === 'number') val = parseFloat(val);
-                    else if (config.type === 'int') val = parseInt(val, 10);
+                    if (config.type === 'number') val = Number.parseFloat(val);
+                    else if (config.type === 'int') val = Number.parseInt(val, 10);
 
                     args[config.name] = val;
                 });
@@ -403,5 +226,153 @@ export class CommandManager {
         if (this.onTelemetry) {
             this.onTelemetry(data);
         }
+    }
+
+    _parseInput(input) {
+        let transcript = '';
+        let confidence = 1.0;
+        let eventData = null;
+        if (typeof input === 'string') {
+            transcript = input;
+        } else {
+            transcript = input.text || '';
+            confidence = input.confidence !== undefined ? input.confidence : 1.0;
+            eventData = input;
+        }
+        return { transcript, confidence, eventData };
+    }
+
+    _findCommand(idOrPhrase) {
+        if (this.commandRegistry.has(idOrPhrase)) {
+            return this.commandRegistry.get(idOrPhrase);
+        }
+        const cleaned = cleanText(idOrPhrase);
+        for (const c of this.commandRegistry.values()) {
+            if (c.phrase === cleaned || c.originalPhrase === idOrPhrase) {
+                return c;
+            }
+        }
+        return null;
+    }
+
+    _deleteCommandFromRegistry(cmd) {
+        this.commandRegistry.delete(cmd.id);
+        if (cmd.type === 'pattern') {
+            this.patternCommands = this.patternCommands.filter(c => c.id !== cmd.id);
+        } else {
+            const bucket = this.exactCommands.get(cmd.phrase);
+            if (bucket) {
+                const idx = bucket.findIndex(c => c.id === cmd.id);
+                if (idx !== -1) bucket.splice(idx, 1);
+                if (bucket.length === 0) this.exactCommands.delete(cmd.phrase);
+            }
+        }
+        return true;
+    }
+
+    _findBestMatch(cleanedTranscript, confidence) {
+        let winner = null;
+
+        // Exact Match
+        const exactBucket = this.exactCommands.get(cleanedTranscript);
+        if (exactBucket) {
+            for (const cmd of exactBucket) {
+                if (cmd.scope !== 'global' && cmd.scope !== this.currentScope) continue;
+                if (confidence < cmd.minConfidence) continue;
+                winner = { cmd, args: {}, score: 1000 + cmd.phrase.length };
+                break;
+            }
+        }
+
+        // Pattern Match
+        // Filter candidates first
+        const candidates = this.patternCommands.filter(cmd =>
+            cmd.scope === 'global' || cmd.scope === this.currentScope
+        );
+
+        for (const cmd of candidates) {
+            if (confidence < cmd.minConfidence) continue;
+            if (winner && winner.cmd.priority > cmd.priority) continue;
+
+            const matchResult = this._checkMatch(cmd, cleanedTranscript);
+            if (matchResult.matched) {
+                const score = this._calculateScore(cmd, matchResult);
+                if (!winner ||
+                    (cmd.priority > winner.cmd.priority) ||
+                    (cmd.priority === winner.cmd.priority && score > winner.score)) {
+                    winner = { cmd, args: matchResult.args, score };
+                }
+            }
+        }
+        return winner;
+    }
+
+    _initTelemetryData(transcript, confidence, winner) {
+        return {
+            type: 'command_evaluated',
+            transcript,
+            confidence,
+            matched: !!winner,
+            matchType: winner?.cmd.type,
+            winnerId: winner?.cmd.id,
+            scope: this.currentScope,
+            rejectedReason: null,
+            latencyMs: 0
+        };
+    }
+
+    _checkCooldown(cmd) {
+        const now = Date.now();
+        const lastRun = this.cooldowns.get(cmd.id) || 0;
+        if (cmd.cooldown > 0 && (now - lastRun < cmd.cooldown)) {
+            return false;
+        }
+        return true;
+    }
+
+    async _handleExecution(winner, transcript, cleanedTranscript, speakMethod, telemetryData) {
+        if (!this._checkCooldown(winner.cmd)) {
+            telemetryData.rejectedReason = 'cooldown';
+            this._emitTelemetry(telemetryData);
+            return false;
+        }
+
+        try {
+            if (winner.cmd.cooldown > 0) {
+                this.cooldowns.set(winner.cmd.id, Date.now());
+            }
+            await winner.cmd.callback(winner.args || {}, transcript, cleanedTranscript, speakMethod);
+
+            if (winner.cmd.once) {
+                this.unregister(winner.cmd.id);
+            }
+
+            this._emitTelemetry(telemetryData);
+            return true;
+        } catch (e) {
+            console.error('[JSVoice] Command Execution Error:', e);
+            telemetryData.rejectedReason = 'execution_error';
+            telemetryData.error = e.message;
+            this._emitTelemetry(telemetryData);
+            return false;
+        }
+    }
+
+    _handleNoMatch(cleanedTranscript, telemetryData) {
+        // Re-check partial matches for telemetry reason
+        const candidates = this.patternCommands.filter(cmd =>
+            cmd.scope === 'global' || cmd.scope === this.currentScope
+        );
+        const exactBucket = this.exactCommands.get(cleanedTranscript);
+
+        const hasPartial = candidates.some(c => this._checkMatch(c, cleanedTranscript).matched) ||
+            (exactBucket && exactBucket.some(c => c.scope === 'global' || c.scope === this.currentScope));
+
+        if (hasPartial) {
+            telemetryData.rejectedReason = 'confidence_too_low';
+        } else {
+            telemetryData.rejectedReason = 'no_match';
+        }
+        this._emitTelemetry(telemetryData);
     }
 }

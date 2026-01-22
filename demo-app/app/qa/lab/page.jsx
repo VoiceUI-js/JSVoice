@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { VoiceHarness } from '../../../lib/qa/VoiceHarness';
 import { WIDGET_TEST_SUITE, LINKS_TEST_SUITE } from '../../../lib/qa/test-suites';
 import { uikitStore, useUiKitState } from 'jsvoice/ui-kit/core/store';

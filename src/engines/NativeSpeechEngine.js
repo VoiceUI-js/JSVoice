@@ -4,11 +4,11 @@ class NativeSpeechEngine extends BaseSpeechEngine {
     constructor(options) {
         super(options);
         this.recognition = null;
-        this.SpeechRecognitionConstructor = window.SpeechRecognition || window.webkitSpeechRecognition;
+        this.SpeechRecognitionConstructor = globalThis.SpeechRecognition || globalThis.webkitSpeechRecognition;
     }
 
     static get isSupported() {
-        return !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+        return !!(globalThis.SpeechRecognition || globalThis.webkitSpeechRecognition);
     }
 
     async init() {

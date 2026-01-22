@@ -1,7 +1,8 @@
 import React from 'react';
 import { useKitState, KitActions } from './store.js';
 // Imports
-import { getThemeStyles } from './themes/index.js';
+// Imports
+// getThemeStyles unused
 
 export function IntentBadge() {
     const intent = useKitState(s => s.intent);
@@ -28,7 +29,7 @@ export function IntentBadge() {
 }
 
 export function FocusTimer() {
-    const { active, remainingMs } = useKitState(s => s.focusMode);
+    const { active } = useKitState(s => s.focusMode);
     if (!active) return null;
     return React.createElement('div', {
         'data-jsvoice-kit': true,
@@ -102,7 +103,7 @@ export function FilterBar() {
     if (filters.length === 0) return null;
 
     return React.createElement('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap', padding: '10px 0' } },
-        filters.map((f, i) => React.createElement('span', { key: i, style: { background: 'var(--jv-accent)', color: 'white', padding: '4px 12px', borderRadius: 16, fontSize: 12 } },
+        filters.map((f) => React.createElement('span', { key: f, style: { background: 'var(--jv-accent)', color: 'white', padding: '4px 12px', borderRadius: 16, fontSize: 12 } },
             f, React.createElement('button', { onClick: () => { }, style: { background: 'none', border: 'none', color: 'white', marginLeft: 6, cursor: 'pointer' } }, '×')))
     );
 }
@@ -145,7 +146,7 @@ export function SnapshotList() {
         style: { marginTop: 20 }
     }, React.createElement('h5', { style: { color: 'var(--jv-text-secondary)', borderBottom: '1px solid var(--jv-border)', paddingBottom: 8 } }, 'Local Snapshots'),
         snapshots.length === 0 ? React.createElement('p', { style: { fontSize: 13, color: 'var(--jv-text-secondary)' } }, 'Say "Save Snapshot"') :
-            snapshots.map((snap, i) => React.createElement('div', { key: i, style: { padding: '8px 0', fontSize: 13, color: 'var(--jv-text-secondary)', display: 'flex', justifyContent: 'space-between' } },
+            snapshots.map((snap) => React.createElement('div', { key: snap.name || snap.id, style: { padding: '8px 0', fontSize: 13, color: 'var(--jv-text-secondary)', display: 'flex', justifyContent: 'space-between' } },
                 snap.name,
                 React.createElement('button', { onClick: () => KitActions.loadSnapshot(snap.name), style: { background: 'transparent', border: '1px solid var(--jv-border)', color: 'var(--jv-text-secondary)', borderRadius: 4, fontSize: 10, padding: '2px 6px' } }, 'Load')
             ))

@@ -22,56 +22,44 @@ export default function FuzzyMatchPlugin(voice, options = {}) {
     const originalNotRecognized = voice.options.onCommandNotRecognized || (() => { });
 
     voice.setOption('onCommandNotRecognized', (transcript) => {
-        // 1. Try Synonyms
-        // If user said "hi", and we have synonym "hi" -> "hello", try executing "hello".
+        handleNotRecognized(transcript);
+    });
 
-        // This requires access to execute a command by name/phrase directly.
-        // `voice.process(transcript)` is usually internal via engine.
-        // BUT `voice.speak` etc are public.
-        // We lack a public `voice.execute(text)` method in the Core API. 
-        // We should add one or use a trick.
-
-        // Let's assume we can try to find a match manually against registered commands.
-        // But `voice._commandManager` is private. 
-
-        // Critical Limitation: Plugins cannot see private state effectively in the current architecture
-        // unless we expose it. 
-
-        // RECOMMENDATION: We will inject a helper method onto voice for this plugin to work.
-        // For now, let's implement the logic assuming we can access `_commandManager` (it is technically JS, so `voice._commandManager` works even if "private" convention).
-
+    function handleNotRecognized(transcript) {
         if (!voice._commandManager) {
             console.warn('[FuzzyPlugin] Cannot access CommandManager');
             originalNotRecognized(transcript);
             return;
         }
 
-        const commands = Array.from(voice._commandManager.commands.values());
+        // Use commandRegistry
+        const commands = Array.from(voice._commandManager.commandRegistry.values());
         const cleaned = transcript.toLowerCase().trim();
 
         // 1. Check Synonyms
-        // Reverse lookup: if transcript is a value in synonyms map, map to key
-        let targetPhrase = cleaned;
+        if (checkSynonyms(cleaned, commands)) return;
+
+        // 2. Fuzzy Match
+        attemptFuzzy(cleaned, commands);
+    }
+
+    function checkSynonyms(cleaned, commands) {
         for (const [canonical, alts] of Object.entries(config.synonyms)) {
             if (alts.includes(cleaned)) {
                 console.log(`[FuzzyPlugin] Synonym match: "${cleaned}" -> "${canonical}"`);
-                targetPhrase = canonical;
 
                 // Try executing with new phrase
-                // We need to reinject this into CommandManager.
-                // We can call `_commandManager.process(targetPhrase)`
-                voice._commandManager.process(targetPhrase, voice.speak.bind(voice)).then(matched => {
+                voice._commandManager.process(canonical, voice.speak.bind(voice)).then(matched => {
                     if (!matched) {
                         // Fallback to fuzzy
-                        attemptFuzzy(targetPhrase, commands);
+                        attemptFuzzy(canonical, commands);
                     }
                 });
-                return;
+                return true;
             }
         }
-
-        attemptFuzzy(cleaned, commands);
-    });
+        return false;
+    }
 
     function attemptFuzzy(text, commands) {
         let bestMatch = null;
@@ -126,6 +114,6 @@ export default function FuzzyMatchPlugin(voice, options = {}) {
             if (i > 0) costs[shorter.length] = lastValue;
         }
 
-        return (longer.length - costs[shorter.length]) / parseFloat(longer.length);
+        return (longer.length - costs[shorter.length]) / Number.parseFloat(longer.length);
     }
 }
