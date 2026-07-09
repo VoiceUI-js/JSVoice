@@ -1,0 +1,110 @@
+import { ComponentType, ReactNode } from 'react';
+
+export const VoiceKitContext: any;
+export const VoiceKitProvider: ComponentType<{
+  voice?: any;
+  theme?: string | object;
+  debug?: boolean;
+  initialOpen?: boolean;
+  persistKey?: string | null;
+  commandGroups?: string[];
+  plugins?: Function[];
+  children?: ReactNode;
+}>;
+
+export function useVoiceKit(): any;
+export function useVoiceKitOptional(): any;
+export function useVoiceKitStore<T = any>(selector?: (s: any) => T): T;
+export function useVoiceOptional(): any;
+export function useVoiceCommands(): Array<{
+  id: string;
+  phrase: string;
+  type: string;
+  scope: string;
+  priority?: number;
+  group?: string;
+  args?: any[];
+}>;
+export function useVoiceTranscript(options?: { maxItems?: number; query?: string }): any;
+export function useVoiceTheme(): any;
+export function useVoiceDebug(): any;
+export function useVoicePermissions(): any;
+export function useVoicePlugins(): any;
+export function useVoiceWidgets(): any;
+export function useVoiceRules(): any;
+export function useVoiceUi(): any;
+
+export const VoiceOrb: ComponentType<any>;
+export const VoiceDock: ComponentType<any>;
+export const VoiceHUD: ComponentType<any>;
+export const VoiceCommandPalette: ComponentType<any>;
+export const VoiceTranscript: ComponentType<any>;
+export const VoiceDebugPanel: ComponentType<any>;
+export const VoiceOnboarding: ComponentType<any>;
+export const VoicePermissionCard: ComponentType<any>;
+export const VoiceEngineSwitcher: ComponentType<any>;
+export const VoiceScopeSwitcher: ComponentType<any>;
+export const WakeWordIndicator: ComponentType<any>;
+export const PushToTalkButton: ComponentType<any>;
+export const HoldToSpeakButton: ComponentType<any>;
+export const VoiceWaveform: ComponentType<any>;
+export const VoiceAmplitudeMeter: ComponentType<any>;
+export const VoiceStatusBadge: ComponentType<any>;
+export const VoiceCommandList: ComponentType<any>;
+export const VoiceCommandItem: ComponentType<any>;
+export const VoiceTranscriptLine: ComponentType<any>;
+export const VoiceThemeSwitcher: ComponentType<any>;
+
+export const VoiceButton: ComponentType<any>;
+export const VoiceCard: ComponentType<any>;
+export const VoiceInput: ComponentType<any>;
+export const VoiceSelect: ComponentType<any>;
+export const VoiceTabs: ComponentType<any>;
+export const VoiceAccordion: ComponentType<any>;
+export const VoiceTable: ComponentType<any>;
+export const VoiceEmptyState: ComponentType<any>;
+export const VoiceErrorState: ComponentType<any>;
+export const VoiceLoadingState: ComponentType<any>;
+export const VoiceTooltip: ComponentType<any>;
+export const VoiceModal: ComponentType<any>;
+export const VoiceDrawer: ComponentType<any>;
+export const VoiceToastHost: ComponentType<any>;
+export const VoiceConfirmDialog: ComponentType<any>;
+
+export const CommandCenter: ComponentType<any>;
+export const CommandBuilder: ComponentType<any>;
+export const PatternCommandBuilder: ComponentType<any>;
+export const CommandTester: ComponentType<any>;
+export const RuleBuilder: ComponentType<any>;
+export const WidgetPanel: ComponentType<any>;
+export const WidgetCanvas: ComponentType<any>;
+export const PluginCenter: ComponentType<any>;
+export const VoiceModeOverlay: ComponentType<any>;
+export const VoiceKitWorkbench: ComponentType<any>;
+export const HyperVoiceShell: ComponentType<any>;
+
+export const IntentBadge: ComponentType<any>;
+export const FocusTimer: ComponentType<any>;
+export const ConfirmationOverlay: ComponentType<any>;
+export const HistoryPanel: ComponentType<any>;
+export const AdvancedPanel: ComponentType<any>;
+export const FilterBar: ComponentType<any>;
+export const SimulationBanner: ComponentType<any>;
+export const TourOverlay: ComponentType<any>;
+export const SnapshotList: ComponentType<any>;
+
+export const kitStore: any;
+export const KitActions: any;
+export function useKitState<T = any>(selector?: (s: any) => T): T;
+export const themes: Record<string, Record<string, string>>;
+export function getThemeStyles(themeName?: string): Record<string, string>;
+export const VoiceKitTheme: ComponentType<{ theme?: string }>;
+
+export function createVoiceTheme(options?: any): any;
+export function resolveTheme(theme?: any): any;
+export const builtInThemes: Record<string, any>;
+export const themeNames: string[];
+export const VoiceKitActions: Record<string, Function>;
+export function createVoiceKitController(): any;
+export function createVoiceKitStore(seed?: any): any;
+export const uikitStore: any;

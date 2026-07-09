@@ -1,25 +1,23 @@
 /**
  * Help Mode Plugin
  * Provides a "help" command that reads out available commands for the current scope.
+ * Uses public voice.listCommands() API.
  */
 export default function HelpPlugin(voice, options = {}) {
     const config = {
         trigger: 'help',
         readAloud: true,
-        showVisual: false, // Future: Overlay
+        showVisual: false,
         intro: 'Here are the available commands:',
         ...options
     };
 
     voice.addCommand(config.trigger, () => {
-        // Access commands (using same private access pattern as Fuzzy)
-        const manager = voice._commandManager;
-        if (!manager) return;
-
-        const currentScope = manager.currentScope;
-        const available = Array.from(manager.commands.values())
-            .filter(cmd => cmd.scope === 'global' || cmd.scope === currentScope)
-            .map(cmd => cmd.phrase);
+        const currentScope = voice.currentScope || 'global';
+        const list = typeof voice.listCommands === 'function' ? voice.listCommands() : [];
+        const available = list
+            .filter((cmd) => cmd.scope === 'global' || cmd.scope === currentScope)
+            .map((cmd) => cmd.phrase);
 
         if (available.length === 0) {
             voice.speak('No commands available for this context.');
@@ -32,10 +30,16 @@ export default function HelpPlugin(voice, options = {}) {
             voice.speak(text);
         }
 
-        console.log('[JSVoice-Help]', text);
+        if (typeof console !== 'undefined') {
+            console.log('[JSVoice-Help]', text);
+        }
 
         if (voice.options.onTelemetry) {
-            voice.options.onTelemetry({ type: 'help_invoked', scope: currentScope, count: available.length });
+            voice.options.onTelemetry({
+                type: 'help_invoked',
+                scope: currentScope,
+                count: available.length,
+            });
         }
     });
 }

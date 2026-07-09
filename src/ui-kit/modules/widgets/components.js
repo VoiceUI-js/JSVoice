@@ -1,5 +1,5 @@
 import React from 'react';
-import { useUiKitState } from '../../core/store.js';
+import { useUiKitState } from '../../core/useUiKitState.js';
 
 export function WidgetCanvas() {
     const widgets = useUiKitState(s => s.widgets);

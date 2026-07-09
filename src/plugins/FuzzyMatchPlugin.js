@@ -1,6 +1,7 @@
 /**
  * Fuzzy Matcher Plugin
  * Adds lightweight Levenshtein distance matching + Synonym support.
+ * Uses public voice.listCommands() / processText() APIs.
  */
 export default function FuzzyMatchPlugin(voice, options = {}) {
     const config = {
@@ -9,111 +10,95 @@ export default function FuzzyMatchPlugin(voice, options = {}) {
         ...options
     };
 
-    // We need to intercept the CommandManager's matching logic.
-    // Since v2.2, CommandManager is private internal `_commandManager`.
-    // We can't easily *replace* the checkMatch method without access.
-    // OPTION 1: Monkey Patch via voice instance if exposed?
-    // JSVoice.js doesn't expose _commandManager publicly.
+    // Hook into not-recognized via options callback wrapping
+    const prev =
+        (voice._callbacks && voice._callbacks.onCommandNotRecognized) ||
+        voice.options.onCommandNotRecognized ||
+        (() => {});
 
-    // WORKAROUND: We can register a global "catch-all" listener or 
-    // hook into `onCommandNotRecognized` to retry with fuzzy logic.
-    // `onCommandNotRecognized` is safe and non-invasive.
-
-    const originalNotRecognized = voice.options.onCommandNotRecognized || (() => { });
-
-    voice.setOption('onCommandNotRecognized', (transcript) => {
-        handleNotRecognized(transcript);
-    });
-
-    function handleNotRecognized(transcript) {
-        if (!voice._commandManager) {
-            console.warn('[FuzzyPlugin] Cannot access CommandManager');
-            originalNotRecognized(transcript);
+    const handleNotRecognized = (transcript) => {
+        const cleaned = String(transcript || '').toLowerCase().trim();
+        if (!cleaned) {
+            prev(transcript);
             return;
         }
 
-        // Use commandRegistry
-        const commands = Array.from(voice._commandManager.commandRegistry.values());
-        const cleaned = transcript.toLowerCase().trim();
-
-        // 1. Check Synonyms
-        if (checkSynonyms(cleaned, commands)) return;
-
-        // 2. Fuzzy Match
-        attemptFuzzy(cleaned, commands);
-    }
-
-    function checkSynonyms(cleaned, commands) {
+        // 1. Synonyms → processText with canonical phrase
         for (const [canonical, alts] of Object.entries(config.synonyms)) {
-            if (alts.includes(cleaned)) {
-                console.log(`[FuzzyPlugin] Synonym match: "${cleaned}" -> "${canonical}"`);
-
-                // Try executing with new phrase
-                voice._commandManager.process(canonical, voice.speak.bind(voice)).then(matched => {
-                    if (!matched) {
-                        // Fallback to fuzzy
-                        attemptFuzzy(canonical, commands);
-                    }
+            if (alts.map((a) => String(a).toLowerCase()).includes(cleaned)) {
+                voice.processText?.(canonical).then((matched) => {
+                    if (!matched) attemptFuzzy(cleaned);
                 });
-                return true;
+                return;
             }
+        }
+
+        // 2. Fuzzy match against registered phrases
+        if (!attemptFuzzy(cleaned)) {
+            prev(transcript);
+        }
+    };
+
+    function attemptFuzzy(cleaned) {
+        const commands = typeof voice.listCommands === 'function' ? voice.listCommands() : [];
+        let best = null;
+        let bestScore = 0;
+
+        for (const cmd of commands) {
+            const phrase = String(cmd.phrase || '').toLowerCase();
+            if (!phrase || phrase.includes('{')) continue; // skip patterns
+            const score = similarity(cleaned, phrase);
+            if (score >= config.threshold && score > bestScore) {
+                bestScore = score;
+                best = phrase;
+            }
+        }
+
+        if (best) {
+            voice.processText?.(best);
+            return true;
         }
         return false;
     }
 
-    function attemptFuzzy(text, commands) {
-        let bestMatch = null;
-        let bestScore = 0;
+    // Prefer internal callbacks bag so it actually fires
+    if (voice._callbacks) {
+        voice._callbacks.onCommandNotRecognized = handleNotRecognized;
+    }
+    voice.options.onCommandNotRecognized = handleNotRecognized;
 
-        for (const cmd of commands) {
-            if (cmd.type !== 'exact') continue; // Only fuzzy match exact phrases
+    return {
+        name: 'FuzzyMatchPlugin',
+        destroy() {
+            if (voice._callbacks) voice._callbacks.onCommandNotRecognized = prev;
+            voice.options.onCommandNotRecognized = prev;
+        },
+    };
+}
 
-            const similarity = getSimilarity(text, cmd.phrase);
-            if (similarity >= config.threshold && similarity > bestScore) {
-                bestScore = similarity;
-                bestMatch = cmd;
-            }
-        }
+function similarity(a, b) {
+    if (a === b) return 1;
+    if (!a.length || !b.length) return 0;
+    const dist = levenshtein(a, b);
+    const maxLen = Math.max(a.length, b.length);
+    return 1 - dist / maxLen;
+}
 
-        if (bestMatch) {
-            console.log(`[FuzzyPlugin] Fuzzy match: "${text}" ~ "${bestMatch.phrase}" (${(bestScore * 100).toFixed(0)}%)`);
-            // Execute
-            // We need to pass arguments if any? (Fuzzy usually for exact phrases)
-            bestMatch.callback({}, text, text, voice.speak.bind(voice));
-
-            if (voice.options.onCommandRecognized) {
-                voice.options.onCommandRecognized(bestMatch.phrase, text, { fuzzy: true, score: bestScore });
-            }
-        } else {
-            // Truly not recognized
-            originalNotRecognized(text);
+function levenshtein(a, b) {
+    const m = a.length;
+    const n = b.length;
+    const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+    for (let i = 0; i <= m; i++) dp[i][0] = i;
+    for (let j = 0; j <= n; j++) dp[0][j] = j;
+    for (let i = 1; i <= m; i++) {
+        for (let j = 1; j <= n; j++) {
+            const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+            dp[i][j] = Math.min(
+                dp[i - 1][j] + 1,
+                dp[i][j - 1] + 1,
+                dp[i - 1][j - 1] + cost
+            );
         }
     }
-
-    // Levenshtein-based similarity (0.0 - 1.0)
-    function getSimilarity(s1, s2) {
-        const longer = s1.length > s2.length ? s1 : s2;
-        const shorter = s1.length > s2.length ? s2 : s1;
-        if (longer.length === 0) return 1.0;
-
-        const costs = new Array();
-        for (let i = 0; i <= longer.length; i++) {
-            let lastValue = i;
-            for (let j = 0; j <= shorter.length; j++) {
-                if (i == 0) costs[j] = j;
-                else {
-                    if (j > 0) {
-                        let newValue = costs[j - 1];
-                        if (s1.charAt(i - 1) != s2.charAt(j - 1))
-                            newValue = Math.min(Math.min(newValue, lastValue), costs[j]) + 1;
-                        costs[j - 1] = lastValue;
-                        lastValue = newValue;
-                    }
-                }
-            }
-            if (i > 0) costs[shorter.length] = lastValue;
-        }
-
-        return (longer.length - costs[shorter.length]) / Number.parseFloat(longer.length);
-    }
+    return dp[m][n];
 }

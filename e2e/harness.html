@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>JSVoice E2E Harness</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        margin: 24px;
+        background: #0b0d12;
+        color: #f4f6fb;
+      }
+      button {
+        margin: 4px;
+        padding: 8px 12px;
+        border-radius: 8px;
+        border: 1px solid #444;
+        background: #1c2230;
+        color: #fff;
+        cursor: pointer;
+      }
+      #log {
+        white-space: pre-wrap;
+        background: #141821;
+        padding: 12px;
+        border-radius: 8px;
+        min-height: 120px;
+        margin-top: 16px;
+        font-size: 13px;
+      }
+      #status {
+        color: #8b7bff;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>JSVoice E2E Harness</h1>
+    <p id="status" data-testid="status">booting…</p>
+    <div>
+      <button type="button" id="btn-start" data-testid="start">Start</button>
+      <button type="button" id="btn-stop" data-testid="stop">Stop</button>
+      <button type="button" id="btn-toggle" data-testid="toggle">Toggle</button>
+      <button type="button" id="btn-hello" data-testid="simulate-hello">Simulate “hello world”</button>
+      <button type="button" id="btn-unknown" data-testid="simulate-unknown">Simulate unknown</button>
+      <button type="button" id="btn-process" data-testid="process-text">processText hello world</button>
+      <button type="button" id="btn-list" data-testid="list-commands">List commands</button>
+      <button type="button" id="btn-palette-open" data-testid="open-palette-flag">Flag palette open</button>
+    </div>
+    <div id="log" data-testid="log"></div>
+    <ul id="commands" data-testid="commands"></ul>
+
+    <script type="module">
+      class FakeSpeechEngine {
+        constructor(options = {}) {
+          this.options = { autoRestart: false, restartDelay: 50, ...options };
+          this.name = 'FakeSpeechEngine';
+          this.isListening = false;
+          this.handlers = {};
+        }
+        async init() {
+          return this;
+        }
+        setCallbacks(cbs = {}) {
+          this.handlers = { ...this.handlers, ...cbs };
+        }
+        setOptions(o = {}) {
+          this.options = { ...this.options, ...o };
+        }
+        async start() {
+          this.isListening = true;
+          this.handlers.onStart?.();
+        }
+        async stop() {
+          this.isListening = false;
+          this.handlers.onEnd?.();
+        }
+        simulateTranscript(text, isFinal = true) {
+          if (!this.isListening) return;
+          this.handlers.onResult?.(text, isFinal);
+        }
+      }
+
+      const logEl = document.getElementById('log');
+      const statusEl = document.getElementById('status');
+      const commandsEl = document.getElementById('commands');
+      const lines = [];
+      function log(msg) {
+        lines.push(String(msg));
+        logEl.textContent = lines.join('\n');
+      }
+
+      try {
+        const { default: JSVoice } = await import('/src/JSVoice.js');
+        const engine = new FakeSpeechEngine();
+        const voice = new JSVoice({
+          engine,
+          autoRestart: false,
+          skipMicrophoneCheck: true,
+          onStatusChange: (m) => {
+            statusEl.textContent = m;
+          },
+          onCommandRecognized: (a, b) => log(`recognized:${b || a}`),
+          onCommandNotRecognized: (t) => log(`not_recognized:${t}`),
+          onSpeechStart: () => log('speech_start'),
+          onSpeechEnd: () => log('speech_end'),
+          onError: (e) => log(`error:${e?.message || e}`),
+        });
+
+        voice._state._microphoneAllowed = true;
+
+        voice.addCommand('hello world', () => {
+          log('action:hello_world');
+        });
+
+        window.__jsvoice = { voice, engine };
+
+        document.getElementById('btn-start').onclick = async () => {
+          await voice.start();
+          log(`listening:${voice.isListening}`);
+        };
+        document.getElementById('btn-stop').onclick = () => {
+          voice.stop();
+          log(`listening:${voice.isListening}`);
+        };
+        document.getElementById('btn-toggle').onclick = async () => {
+          await voice.toggle();
+          log(`listening:${voice.isListening}`);
+        };
+        document.getElementById('btn-hello').onclick = () => {
+          engine.simulateTranscript('hello world');
+        };
+        document.getElementById('btn-unknown').onclick = () => {
+          engine.simulateTranscript('zzz unknown phrase');
+        };
+        document.getElementById('btn-process').onclick = async () => {
+          const ok = await voice.processText('hello world');
+          log(`processText:${ok}`);
+        };
+        document.getElementById('btn-list').onclick = () => {
+          const list = voice.listCommands();
+          commandsEl.innerHTML = list
+            .map((c) => `<li data-phrase="${c.phrase}">${c.phrase}</li>`)
+            .join('');
+          log(`commands:${list.length}`);
+        };
+        document.getElementById('btn-palette-open').onclick = () => {
+          document.body.dataset.palette = 'open';
+          log('palette_flag:open');
+        };
+
+        statusEl.textContent = 'ready';
+        log('harness_ready');
+        document.body.dataset.ready = '1';
+      } catch (e) {
+        statusEl.textContent = 'failed';
+        log(String(e && e.stack ? e.stack : e));
+        console.error(e);
+      }
+    </script>
+  </body>
+</html>

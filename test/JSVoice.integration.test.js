@@ -1,9 +1,10 @@
 // test/JSVoice.integration.test.js
-
+import { createTestVoice } from './helpers/createTestVoice.js';
 import JSVoice from '../src/JSVoice.js';
 
 describe('JSVoice Integration Tests', () => {
   let voice;
+  let engine;
   let mockCallbacks;
 
   beforeEach(() => {
@@ -28,47 +29,46 @@ describe('JSVoice Integration Tests', () => {
   });
 
   test('should create JSVoice instance with default options', () => {
-    voice = new JSVoice();
+    ({ voice, engine } = createTestVoice());
     expect(voice).toBeDefined();
     expect(voice.isApiSupported).toBe(true);
+    expect(JSVoice.isApiSupported).toBe(true);
     expect(voice.isListening).toBe(false);
-    expect(voice.microphoneAllowed).toBe(false);
+    expect(voice.microphoneAllowed).toBe(true);
+    expect(engine).toBeDefined();
   });
 
   test('should create JSVoice instance with custom options', () => {
-    const customOptions = {
+    ({ voice } = createTestVoice({
       lang: 'es-ES',
       continuous: false,
       onStatusChange: jest.fn(),
-    };
-
-    voice = new JSVoice(customOptions);
+    }));
     expect(voice.options.lang).toBe('es-ES');
     expect(voice.options.continuous).toBe(false);
   });
 
   test('should add and remove custom commands', () => {
-    voice = new JSVoice();
+    ({ voice } = createTestVoice());
     const testCallback = jest.fn();
 
-    // Add command
     voice.addCommand('test command', testCallback);
+    expect(voice.listCommands().some((c) => c.phrase === 'test command' || c.phrase.includes('test'))).toBe(true);
     expect(voice.removeCommand('test command')).toBe(true);
     expect(voice.removeCommand('nonexistent command')).toBe(false);
   });
 
   test('should add and remove pattern commands', () => {
-    voice = new JSVoice();
+    ({ voice } = createTestVoice());
     const testCallback = jest.fn();
 
-    // Add pattern command
     voice.addPatternCommand('change {property} to {value}', testCallback);
     expect(voice.removePatternCommand('change {property} to {value}')).toBe(true);
     expect(voice.removePatternCommand('nonexistent pattern')).toBe(false);
   });
 
   test('should update options using setOption', () => {
-    voice = new JSVoice();
+    ({ voice } = createTestVoice());
 
     voice.setOption('lang', 'fr-FR');
     expect(voice.options.lang).toBe('fr-FR');
@@ -78,45 +78,38 @@ describe('JSVoice Integration Tests', () => {
   });
 
   test('should handle invalid setOption calls', () => {
-    voice = new JSVoice(mockCallbacks);
+    ({ voice } = createTestVoice(mockCallbacks));
 
-    // Invalid key
     voice.setOption('', 'value');
     expect(mockCallbacks.onError).toHaveBeenCalledWith(expect.any(Error));
 
-    // Invalid key type
     voice.setOption(null, 'value');
     expect(mockCallbacks.onError).toHaveBeenCalledWith(expect.any(Error));
   });
 
   test('should handle invalid addCommand calls', () => {
-    voice = new JSVoice(mockCallbacks);
+    ({ voice } = createTestVoice(mockCallbacks));
 
-    // Invalid phrase
     voice.addCommand('', jest.fn());
     expect(mockCallbacks.onError).toHaveBeenCalledWith(expect.any(Error));
 
-    // Invalid callback
     voice.addCommand('test', 'not a function');
     expect(mockCallbacks.onError).toHaveBeenCalledWith(expect.any(Error));
   });
 
   test('should handle invalid addPatternCommand calls', () => {
-    voice = new JSVoice(mockCallbacks);
+    ({ voice } = createTestVoice(mockCallbacks));
 
-    // Invalid pattern
     voice.addPatternCommand('', jest.fn());
     expect(mockCallbacks.onError).toHaveBeenCalledWith(expect.any(Error));
 
-    // Invalid callback
     voice.addPatternCommand('test {param}', 'not a function');
     expect(mockCallbacks.onError).toHaveBeenCalledWith(expect.any(Error));
   });
 
   test('should handle invalid speak calls', () => {
-    voice = new JSVoice(mockCallbacks);
+    ({ voice } = createTestVoice(mockCallbacks));
 
-    // Invalid text
     voice.speak('');
     expect(mockCallbacks.onError).toHaveBeenCalledWith(expect.any(Error));
 
@@ -125,7 +118,7 @@ describe('JSVoice Integration Tests', () => {
   });
 
   test('should provide correct getter values', () => {
-    voice = new JSVoice();
+    ({ voice } = createTestVoice());
 
     expect(typeof voice.isListening).toBe('boolean');
     expect(typeof voice.microphoneAllowed).toBe('boolean');
@@ -136,12 +129,35 @@ describe('JSVoice Integration Tests', () => {
   });
 
   test('should handle wake word mode', () => {
-    voice = new JSVoice({
+    ({ voice } = createTestVoice({
       wakeWord: 'hey assistant',
       onStatusChange: jest.fn(),
-    });
+    }));
 
     expect(voice.isWakeWordModeActive).toBe(true);
-    expect(voice.options.continuous).toBe(true); // Should be forced to true
+    expect(voice.options.continuous).toBe(true);
+  });
+
+  test('processText runs registered commands', async () => {
+    const cb = jest.fn();
+    ({ voice } = createTestVoice({
+      onCommandRecognized: mockCallbacks.onCommandRecognized,
+    }));
+    voice.addCommand('hello world', cb);
+    const matched = await voice.processText('hello world');
+    expect(matched).toBe(true);
+    expect(cb).toHaveBeenCalled();
+  });
+
+  test('getEngineInfo returns shape', () => {
+    ({ voice } = createTestVoice());
+    const info = voice.getEngineInfo();
+    expect(info).toEqual(
+      expect.objectContaining({
+        name: expect.any(String),
+        listening: false,
+        supported: expect.any(Boolean),
+      })
+    );
   });
 });

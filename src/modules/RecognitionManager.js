@@ -199,8 +199,11 @@ export async function checkMicrophonePermission(updateStatus, callCallback, stat
     state._microphoneAllowed = false;
     callCallback('onMicrophonePermissionDenied', error);
     updateStatus('Error: Microphone access denied. Please allow it in browser settings.');
-    // Do not throw, just update state, unless caller expects throw? 
-    // Original code threw error.
-    throw error;
+    // Always throw an Error instance so callers / tests can use rejects.toThrow()
+    if (error instanceof Error) throw error;
+    const err = new Error(error?.message || 'Microphone access denied.');
+    err.name = error?.name || 'NotAllowedError';
+    err.cause = error;
+    throw err;
   }
 }

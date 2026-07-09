@@ -2,6 +2,7 @@ import { callCallback, cleanText } from './utils/helpers.js';
 import { logger } from './utils/Logger.js';
 import { initRecognition, checkMicrophonePermission } from './modules/RecognitionManager.js';
 import { CommandManager } from './modules/CommandManager.js';
+import { handleBuiltInActions } from './modules/BuiltInActions.js';
 
 /**
  * JSVoice Core
@@ -283,27 +284,35 @@ class JSVoice {
       }
     }
 
-    // Delegation to CommandManager
-    const commandHandled = await this._commandManager.process(
+    // 1) User-registered commands
+    let commandHandled = await this._commandManager.process(
       rawTranscript,
       this.speak.bind(this)
     );
 
-    if (commandHandled) {
-      // We can manually trigger onCommandRecognized here if we want core to fire it,
-      // but CommandManager handles execution. 
-      // We should likely bind the core callback to the manager output or fire it here using the manager result.
-      // The manager's process returns boolean. To keep legacy callbacks firing (onCommandRecognized),
-      // we might want the manager to return details or fire the callback itself. 
-      // Current Manager impl calls callback but doesn't fire core events.
-      // The `onCommandRecognized` global event is skipped in current Manager impl.
-      // We should fix Manager to emit this or return structured result. 
-      // For this iteration, we rely on the specific command callback firing.
-      // If we want Global events, we should have passed `this._callCallback` to Manager. Not done yet.
+    // 2) Built-in DOM actions (scroll, click, fill, etc.)
+    if (!commandHandled) {
+      try {
+        commandHandled = !!handleBuiltInActions(
+          rawTranscript,
+          cleanedTranscript,
+          this._updateStatus.bind(this),
+          (name, ...args) => this._callCallback(name, ...args),
+          this.speak.bind(this)
+        );
+      } catch (e) {
+        this._callCallback('onError', e);
+      }
     }
 
-    if (!commandHandled && !this._state._wakeWordModeActive && this._state._isListening) {
-      this._updateStatus('Listening for commands...');
+    if (commandHandled) {
+      // Fire legacy global callback for kits / apps
+      this._callCallback('onCommandRecognized', rawTranscript, rawTranscript);
+    } else if (!this._state._wakeWordModeActive) {
+      // Notify for both live listening and processText() testing paths
+      if (this._state._isListening) {
+        this._updateStatus('Listening for commands...');
+      }
       this._callCallback('onCommandNotRecognized', rawTranscript);
     }
     return commandHandled;
@@ -356,7 +365,12 @@ class JSVoice {
       // Async Check: Did stop() happen while we waited?
       if (mySession !== this._sessionToken) return false;
 
-      await this._checkMicrophonePermission();
+      // Tests / FakeSpeechEngine harness can skip getUserMedia
+      if (!this.options.skipMicrophoneCheck) {
+        await this._checkMicrophonePermission();
+      } else {
+        this._state._microphoneAllowed = true;
+      }
 
       // Async Check 2
       if (mySession !== this._sessionToken) return false;
@@ -395,17 +409,24 @@ class JSVoice {
     }
   }
 
+  /**
+   * Toggle listening. Returns the start() promise when starting, or false when stopping.
+   * @returns {Promise<boolean>|boolean}
+   */
   toggle() {
     if (this._state._isListening) {
       this.stop();
-    } else {
-      this.start();
+      return false;
     }
+    return this.start();
   }
 
   speak(text, lang = this.options.lang) {
     if (typeof globalThis.window === 'undefined') return; // SSR Guard
-    if (!text) return;
+    if (text == null || text === '') {
+      this._callCallback('onError', new Error('Invalid speak text'));
+      return;
+    }
 
     if (!this.speechSynthesis || !globalThis.window.SpeechSynthesisUtterance) {
       console.warn('[JSVoice] SpeechSynthesis not supported.');
@@ -461,13 +482,22 @@ class JSVoice {
   /* --- New Command API (Proxied to Manager) --- */
 
   /**
-   * registers a command with optional configuration.
-   * @param {string} phrase 
-   * @param {Function} callback 
+   * Registers a command with optional configuration.
+   * @param {string} phrase
+   * @param {Function} callback
    * @param {Object} options { priority, scope, cooldown, once }
+   * @returns {string|null} command id
    */
   addCommand(phrase, callback, options = {}) {
-    this._commandManager.register(phrase, callback, options);
+    if (!phrase || typeof phrase !== 'string') {
+      this._callCallback('onError', new Error('Invalid command phrase'));
+      return null;
+    }
+    if (typeof callback !== 'function') {
+      this._callCallback('onError', new Error('Invalid command callback'));
+      return null;
+    }
+    return this._commandManager.register(phrase, callback, options);
   }
 
   removeCommand(phrase) {
@@ -477,11 +507,84 @@ class JSVoice {
   addPatternCommand(pattern, callback) {
     // Backwards compatibility wrapper
     logger.warn('addPatternCommand is deprecated. Use addCommand(phrase, callback, { isPattern: true }) instead.');
-    this._commandManager.register(pattern, callback, { type: 'pattern', isPattern: true });
+    if (!pattern || typeof pattern !== 'string') {
+      this._callCallback('onError', new Error('Invalid pattern'));
+      return null;
+    }
+    if (typeof callback !== 'function') {
+      this._callCallback('onError', new Error('Invalid pattern callback'));
+      return null;
+    }
+    return this._commandManager.register(pattern, callback, { type: 'pattern', isPattern: true });
   }
 
   removePatternCommand(pattern) {
     return this._commandManager.unregister(pattern);
+  }
+
+  /**
+   * Public read-only list of registered commands (no private manager access needed).
+   * @returns {Array<{id:string,phrase:string,type:string,scope:string,priority:number}>}
+   */
+  listCommands() {
+    const list = [];
+    if (!this._commandManager?.commandRegistry) return list;
+    this._commandManager.commandRegistry.forEach((cmd) => {
+      list.push({
+        id: cmd.id,
+        phrase: cmd.originalPhrase || cmd.phrase,
+        type: cmd.type || 'exact',
+        scope: cmd.scope || 'global',
+        priority: cmd.priority || 0,
+        args: cmd.argConfigs || [],
+      });
+    });
+    return list.sort(
+      (a, b) => (b.priority || 0) - (a.priority || 0) || String(a.phrase).localeCompare(String(b.phrase))
+    );
+  }
+
+  /**
+   * Process a text transcript as if spoken (testing, palette run, typed input).
+   * @param {string} text
+   * @returns {Promise<boolean>} whether a command matched
+   */
+  async processText(text) {
+    if (!text || typeof text !== 'string') {
+      this._callCallback('onError', new Error('Invalid transcript text'));
+      return false;
+    }
+    return this._handleSpeechResult(text);
+  }
+
+  /**
+   * @returns {{ name: string, mode: string, listening: boolean, supported: boolean }}
+   */
+  getEngineInfo() {
+    const eng = this.recognition;
+    const name =
+      eng?.name ||
+      eng?.constructor?.name ||
+      this._snapshot?.engine?.name ||
+      'unknown';
+    return {
+      name,
+      mode: this._snapshot?.engine?.mode || this.options.engineMode || 'unknown',
+      listening: !!this._state._isListening,
+      supported: JSVoice.isApiSupported,
+    };
+  }
+
+  /**
+   * @returns {string[]}
+   */
+  listScopes() {
+    if (!this._commandManager?.scopes) return ['global'];
+    return Array.from(this._commandManager.scopes);
+  }
+
+  get currentScope() {
+    return this._commandManager?.currentScope || 'global';
   }
 
   setScope(scopeName) {
@@ -503,6 +606,10 @@ class JSVoice {
   /* --- Options --- */
 
   setOption(key, value) {
+    if (!key || typeof key !== 'string') {
+      this._callCallback('onError', new Error('Invalid option key'));
+      return;
+    }
     this.options[key] = value;
     if (key === 'debug') {
       this._commandManager.debugMode = !!value;
@@ -579,10 +686,13 @@ class JSVoice {
       this._notifyListeners({ type: name, payload: args });
     }
 
-    // 3. Execute legacy callback
-    if (this._callbacks && typeof this._callbacks[name] === 'function') {
+    // 3. Execute callback (prefer _callbacks, fall back to options for parity)
+    const fn =
+      (this._callbacks && this._callbacks[name]) ||
+      (this.options && this.options[name]);
+    if (typeof fn === 'function') {
       try {
-        this._callbacks[name](...args);
+        fn(...args);
       } catch (err) {
         console.error(`[JSVoice] Error in callback '${name}':`, err);
       }
@@ -597,6 +707,10 @@ class JSVoice {
   get isListening() { return this._state._isListening; }
   get microphoneAllowed() { return this._state._microphoneAllowed; }
   get voiceFeedback() { return this._currentVoiceFeedback; }
+  /** Instance mirror of static support check (for API parity / tests). */
+  get isApiSupported() { return JSVoice.isApiSupported; }
+  get isWakeWordModeActive() { return !!this._state._wakeWordModeActive; }
+  get isAwaitingCommand() { return !!this._state._awaitingCommand; }
 }
 
 export default JSVoice;

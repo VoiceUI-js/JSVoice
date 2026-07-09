@@ -46,6 +46,8 @@ declare module 'jsvoice' {
         engines?: Array<new (options: JSVoiceOptions) => BaseSpeechEngine>;
         engine?: BaseSpeechEngine;
         plugins?: Array<(instance: JSVoice) => void>;
+        /** Skip getUserMedia (tests / FakeSpeechEngine harness only) */
+        skipMicrophoneCheck?: boolean;
 
         // Callbacks
         onSpeechStart?: () => void;
@@ -106,19 +108,44 @@ declare module 'jsvoice' {
 
         start(): Promise<boolean>;
         stop(): void;
-        toggle(): void;
+        /** Returns start() promise when starting, false when stopping */
+        toggle(): Promise<boolean> | boolean;
         speak(text: string, lang?: string): void;
 
         /**
          * Register a command with advanced options.
+         * @returns command id or null if invalid
          */
-        addCommand(phrase: string, callback: Function, options?: CommandOptions): void;
+        addCommand(phrase: string, callback: Function, options?: CommandOptions): string | null;
 
         removeCommand(idOrPhrase: string): boolean;
 
         /** @deprecated Use addCommand with { isPattern: true } or braces */
-        addPatternCommand(pattern: string, callback: Function): void;
+        addPatternCommand(pattern: string, callback: Function): string | null;
         removePatternCommand(pattern: string): boolean;
+
+        /** Public read-only command list (prefer over private manager access) */
+        listCommands(): Array<{
+            id: string;
+            phrase: string;
+            type: string;
+            scope: string;
+            priority: number;
+            args?: any[];
+        }>;
+
+        /** Process text as if spoken (palette, tests, typed input) */
+        processText(text: string): Promise<boolean>;
+
+        getEngineInfo(): {
+            name: string;
+            mode: string;
+            listening: boolean;
+            supported: boolean;
+        };
+
+        listScopes(): string[];
+        readonly currentScope: string;
 
         // Scopes
         setScope(name: string): void;
@@ -126,7 +153,7 @@ declare module 'jsvoice' {
         popScope(): string;
         resetScope(): void;
 
-        setOption(key: keyof JSVoiceOptions, value: any): void;
+        setOption(key: string, value: any): void;
 
         // Visualizer Proxy Methods (require Visualizer Plugin)
         startAmplitude(callback: (data: number[]) => void, options?: AmplitudeOptions): void;
@@ -137,9 +164,15 @@ declare module 'jsvoice' {
          */
         use(plugin: (instance: JSVoice) => void): this;
 
+        getSnapshot(): any;
+        subscribe(listener: (snapshot: any, event?: any) => void): () => void;
+
         readonly isListening: boolean;
         readonly microphoneAllowed: boolean;
         readonly isApiSupported: boolean;
+        readonly voiceFeedback: string;
+        readonly isWakeWordModeActive: boolean;
+        readonly isAwaitingCommand: boolean;
     }
 
     /**

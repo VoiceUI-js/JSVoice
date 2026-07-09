@@ -19,7 +19,7 @@ import RepairPlugin from 'jsvoice/ui-kit/modules/repair';
 // Components
 import { WidgetCanvas } from 'jsvoice/ui-kit/modules/widgets/components';
 import { VoiceModeOverlay } from 'jsvoice/ui-kit/modules/voice-mode/components';
-import { useUiKitState } from 'jsvoice/ui-kit/core/store';
+import { useUiKitState } from 'jsvoice/ui-kit/core/useUiKitState';
 import { VoiceKitTheme } from 'jsvoice/react/kit/themes';
 
 function KitPlayground() {

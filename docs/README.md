@@ -4,8 +4,19 @@ This folder contains detailed documentation and analysis reports for the JSVoice
 
 ## 📚 **Main Documentation**
 
-- **[DETAILED_DOCUMENTATION.md](../DETAILED_DOCUMENTATION.md)** - Complete API reference and usage guide (in root)
+- **[DOCUMENTATION.md](../DOCUMENTATION.md)** - **Full professional documentation** (developers, start here)
+- **[USER_GUIDE.md](USER_GUIDE.md)** - **Non-developer / end-user manual**
+- **[API_REFERENCE.md](API_REFERENCE.md)** - **API-only reference** (no tutorials)
 - **[README.md](../README.md)** - Quick start and overview (in root)
+- **[DETAILED_DOCUMENTATION.md](../DETAILED_DOCUMENTATION.md)** - Legacy/extended notes (in root)
+- **[AUDIT_REPORT.md](AUDIT_REPORT.md)** - Full project audit (scores, risks, remediation)
+- **[SECURITY_AND_PRIVACY.md](SECURITY_AND_PRIVACY.md)** - Engines, mic lifecycle, voice→DOM risk
+- **[PORCUPINE_WAKE.md](PORCUPINE_WAKE.md)** - Optional on-device wake adapter
+- **[E2E.md](E2E.md)** - Playwright harness
+- **[STORYBOOK.md](STORYBOOK.md)** - Component stories
+- **[HYPER_VOICE_UI_KIT.md](HYPER_VOICE_UI_KIT.md)** - Hyper Voice UI Kit overview (Phase 1+2)
+- **[HYPER_VOICE_COMPONENTS.md](HYPER_VOICE_COMPONENTS.md)** - Full component catalog
+- **[HYPER_VOICE_TEMPLATES.md](HYPER_VOICE_TEMPLATES.md)** - Preset app templates
 - **[CHANGELOG.md](../CHANGELOG.md)** - Version history and release notes (in root)
 - **[CONTRIBUTING.md](../CONTRIBUTING.md)** - Contribution guidelines (in root)
 

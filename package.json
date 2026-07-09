@@ -10,8 +10,13 @@
   "type": "module",
   "exports": {
     ".": {
-      "import": "./src/index.js",
+      "import": "./dist/voice-ui.esm.js",
       "require": "./dist/voice-ui.cjs.js",
+      "types": "./src/index.d.ts",
+      "default": "./dist/voice-ui.esm.js"
+    },
+    "./src": {
+      "import": "./src/index.js",
       "types": "./src/index.d.ts"
     },
     "./core": {
@@ -26,18 +31,31 @@
       "import": "./src/engines/WhisperSpeechEngine.js",
       "types": "./src/index.d.ts"
     },
+    "./engines/porcupine-wake": {
+      "import": "./dist/engines/PorcupineWakeAdapter.esm.js",
+      "require": "./dist/engines/PorcupineWakeAdapter.cjs.js",
+      "default": "./src/engines/PorcupineWakeAdapter.js"
+    },
     "./plugins/visualizer": {
       "import": "./src/modules/AudioVisualizer.js",
       "types": "./src/index.d.ts"
     },
     "./react": {
-      "import": "./src/react/index.js",
-      "types": "./src/react/index.d.ts"
+      "import": "./dist/react/index.esm.js",
+      "require": "./dist/react/index.cjs.js",
+      "types": "./src/react/index.d.ts",
+      "default": "./src/react/index.js"
     },
     "./react/components": {
       "import": "./src/react/components.js"
     },
     "./react/kit": {
+      "import": "./dist/react/kit/index.esm.js",
+      "require": "./dist/react/kit/index.cjs.js",
+      "types": "./src/react/kit/index.d.ts",
+      "default": "./src/react/kit/index.js"
+    },
+    "./react/kit/store": {
       "import": "./src/react/kit/store.js"
     },
     "./react/kit/components": {
@@ -47,13 +65,40 @@
     "./react/kit/themes": {
       "import": "./src/react/kit/themes/index.js"
     },
+    "./react/kit/widgets": {
+      "import": "./src/react/kit/widgets.js"
+    },
+    "./react/kit/workflows": {
+      "import": "./src/react/kit/workflows.js"
+    },
+    "./react/kit/debug": {
+      "import": "./src/react/kit/debug.js"
+    },
+    "./react/kit/assistant": {
+      "import": "./src/react/kit/assistant.js"
+    },
+    "./packs/kit": {
+      "import": "./src/packs/kit.js"
+    },
     "./plugins/kit": {
       "import": "./src/plugins/kit/index.js",
       "types": "./src/plugins/kit/index.d.ts"
     },
+    "./packs/basic": {
+      "import": "./src/packs/basic.js"
+    },
+    "./ui-kit": {
+      "import": "./dist/ui-kit/index.esm.js",
+      "require": "./dist/ui-kit/index.cjs.js",
+      "types": "./src/ui-kit/index.d.ts",
+      "default": "./src/ui-kit/index.js"
+    },
     "./ui-kit/core/store": {
       "import": "./src/ui-kit/core/store.js",
       "types": "./src/ui-kit/core/store.d.ts"
+    },
+    "./ui-kit/core/useUiKitState": {
+      "import": "./src/ui-kit/core/useUiKitState.js"
     },
     "./ui-kit/core/controller": {
       "import": "./src/ui-kit/core/controller.js",
@@ -99,6 +144,10 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build -o storybook-static",
     "lint": "eslint src/ test/",
     "lint:fix": "eslint src/ test/ --fix",
     "format": "prettier --write \"src/**/*.js\" \"test/**/*.js\" \"examples/**/*.{html,js}\"",
@@ -109,6 +158,10 @@
     "dist/",
     "src/",
     "examples/",
+    "docs/SECURITY_AND_PRIVACY.md",
+    "docs/USER_GUIDE.md",
+    "docs/API_REFERENCE.md",
+    "DOCUMENTATION.md",
     "DETAILED_DOCUMENTATION.md",
     "README.md",
     "LICENSE"
@@ -157,19 +210,47 @@
   },
   "author": "JSVoice Contributors",
   "license": "MIT",
+  "peerDependencies": {
+    "react": ">=17",
+    "react-dom": ">=17",
+    "@picovoice/porcupine-web": ">=3",
+    "@picovoice/web-voice-processor": ">=4"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    },
+    "@picovoice/porcupine-web": {
+      "optional": true
+    },
+    "@picovoice/web-voice-processor": {
+      "optional": true
+    }
+  },
   "devDependencies": {
     "@babel/core": "^7.23.9",
     "@babel/preset-env": "^7.28.3",
+    "@playwright/test": "^1.49.1",
     "@rollup/plugin-babel": "^6.0.4",
     "@rollup/plugin-commonjs": "^25.0.7",
     "@rollup/plugin-node-resolve": "^15.2.3",
     "@rollup/plugin-terser": "^0.4.4",
+    "@storybook/react": "^8.4.7",
+    "@storybook/react-vite": "^8.4.7",
     "@xenova/transformers": "^2.17.2",
     "babel-jest": "^30.1.2",
     "eslint": "^8.56.0",
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
     "prettier": "^3.7.4",
-    "rollup": "^4.9.6"
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "rollup": "^4.9.6",
+    "serve": "^14.2.4",
+    "storybook": "^8.4.7",
+    "vite": "^5.4.11"
   }
 }

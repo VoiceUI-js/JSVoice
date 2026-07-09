@@ -16,16 +16,40 @@ export default function Home() {
                 A generic, pro-grade voice interface system for React.
                 Explore the 15+ modules including intent tracking, history, advanced filtering, and more.
             </p>
-            <Link href="/ui" style={{
-                padding: '16px 32px',
-                background: 'var(--jv-accent, #3b82f6)',
-                color: 'white',
-                borderRadius: '8px',
-                fontSize: '1.2rem',
-                fontWeight: 'bold'
-            }}>
-                Launch Demo Hub
-            </Link>
+            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', justifyContent: 'center' }}>
+                <Link href="/ui/hyper" style={{
+                    padding: '16px 32px',
+                    background: 'var(--jv-accent, #7c5cff)',
+                    color: 'white',
+                    borderRadius: '8px',
+                    fontSize: '1.2rem',
+                    fontWeight: 'bold'
+                }}>
+                    Hyper Voice UI Kit
+                </Link>
+                <Link href="/ui" style={{
+                    padding: '16px 32px',
+                    background: 'transparent',
+                    color: 'var(--jv-text-primary, #fff)',
+                    border: '1px solid var(--jv-border, #444)',
+                    borderRadius: '8px',
+                    fontSize: '1.1rem',
+                    fontWeight: 600
+                }}>
+                    Classic Hub
+                </Link>
+                <Link href="/ui/kit" style={{
+                    padding: '16px 32px',
+                    background: 'transparent',
+                    color: 'var(--jv-text-primary, #fff)',
+                    border: '1px solid var(--jv-border, #444)',
+                    borderRadius: '8px',
+                    fontSize: '1.1rem',
+                    fontWeight: 600
+                }}>
+                    Widget Playground
+                </Link>
+            </div>
         </main>
     );
 }

@@ -7,8 +7,18 @@ const mockSpeechRecognitionInstances = [];
 
 // Mock MediaStream (Required for navigator.mediaDevices.getUserMedia mock)
 class MockMediaStream {
+  constructor() {
+    this.active = true;
+    this._tracks = [
+      {
+        kind: 'audio',
+        stop: jest.fn(),
+        onended: null,
+      },
+    ];
+  }
   getTracks() {
-    return [];
+    return this._tracks;
   }
 }
 
@@ -97,13 +107,13 @@ const mockSpeechSynthesis = {
   getVoices: jest.fn(() => []),
 };
 
-// 3. Mock for SpeechSynthesis Utterance (Fixes the undefined 'text' property in the test)
-const MockSpeechSynthesisUtterance = jest.fn(function (text) {
+// 3. Mock for SpeechSynthesis Utterance (must work with `new`)
+function MockSpeechSynthesisUtterance(text) {
   this.text = text;
   this.lang = 'en-US';
   this.onend = null;
   this.onerror = null;
-});
+}
 
 // 4. Mock for MediaDevices (Microphone)
 const mockMediaDevices = {
@@ -139,7 +149,7 @@ Object.defineProperty(navigator, 'mediaDevices', {
 
 // --- RESET MOCKS BEFORE EACH TEST ---
 
-beforeEach(() => {
+beforeEach(async () => {
   jest.clearAllMocks();
 
   // Reset internal state for all tracked SpeechRecognition instances
@@ -153,6 +163,16 @@ beforeEach(() => {
   mockSpeechRecognitionInstances.length = 0;
 
   mockMediaDevices.getUserMedia.mockImplementation(() => Promise.resolve(new MockMediaStream()));
+
+  // Reset shared mic manager between tests
+  try {
+    const { microphoneManager } = await import('../src/modules/MicrophoneManager.js');
+    if (microphoneManager && typeof microphoneManager.reset === 'function') {
+      microphoneManager.reset();
+    }
+  } catch {
+    /* ignore */
+  }
 
   document.body.style.zoom = '1';
   document.body.innerHTML = '';

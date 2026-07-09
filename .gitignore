@@ -8,6 +8,10 @@ yarn-error.log*
 # Build artifacts
 dist/
 coverage/
+storybook-static/
+test-results/
+playwright-report/
+playwright/.cache/
 
 # Editor/OS specific
 .DS_Store

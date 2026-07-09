@@ -4,8 +4,8 @@
  */
 import React, { createContext, useContext, useEffect, useRef, useSyncExternalStore, useMemo } from 'react';
 
-// Context
-const VoiceContext = createContext(null);
+// Context (exported for optional consumers / kit)
+export const VoiceContext = createContext(null);
 
 /**
  * VoiceProvider

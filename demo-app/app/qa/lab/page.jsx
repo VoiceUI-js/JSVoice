@@ -2,7 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { VoiceHarness } from '../../../lib/qa/VoiceHarness';
 import { WIDGET_TEST_SUITE, LINKS_TEST_SUITE } from '../../../lib/qa/test-suites';
-import { uikitStore, useUiKitState } from 'jsvoice/ui-kit/core/store';
+import { uikitStore } from 'jsvoice/ui-kit/core/store';
+import { useUiKitState } from 'jsvoice/ui-kit/core/useUiKitState';
 import { WidgetCanvas } from 'jsvoice/ui-kit/modules/widgets/components';
 
 // Force import of KitStore to ensure it's active

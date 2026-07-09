@@ -30,7 +30,64 @@ const initialState = {
     repair: { active: false, suggestions: [], lastError: null },
 
     // Logs for Summaries
-    events: []
+    events: [],
+
+    // Hyper Voice UI Kit extensions (non-breaking)
+    ui: {
+        theme: 'glassDark',
+        dockCollapsed: false,
+        paletteOpen: false,
+        debugOpen: false,
+        settingsOpen: false,
+        helpOpen: false,
+        placement: 'bottom-right',
+        speechMuted: false,
+        lastCommand: null,
+        onboardingStep: 0,
+        onboardingComplete: false,
+        lastError: null,
+        scope: 'global',
+        density: 'comfortable',
+        reducedMotion: false,
+        highContrast: false,
+        compactMode: false,
+        transcriptMaxItems: 50,
+        transcriptPersist: false,
+        showWakeWord: true,
+        showToasts: true,
+        voiceModeHints: true,
+        language: 'en-US',
+        speechRate: 1,
+        volume: 1,
+        settingsTab: 'general',
+    },
+    transcriptLog: [],
+    toasts: [],
+    timeline: [],
+    commandTrace: [],
+    activePlugins: [],
+    // Phase 2 state
+    favorites: [],
+    commandHistory: [],
+    assistantMessages: [],
+    workflows: [],
+    activeWorkflowId: null,
+    sessions: [],
+    activeSessionId: null,
+    analytics: {
+        recognized: 0,
+        failed: 0,
+        notRecognized: 0,
+        fallbacks: 0,
+        permissionFailures: 0,
+        latencies: [],
+        commandCounts: {},
+        unrecognizedPhrases: [],
+        sessionStartedAt: null,
+        engineUsage: {},
+    },
+    voiceModeTags: [],
+    pluginCatalog: [],
 };
 
 class KitStore {
@@ -93,13 +150,20 @@ class KitStore {
 
 export const uikitStore = new KitStore();
 
-// Simple React Hook
-import { useSyncExternalStore } from 'react';
-
-export function useUiKitState(selector = s => s) {
-    return useSyncExternalStore(
-        (cb) => uikitStore.subscribe(cb),
-        () => selector(uikitStore.getState()),
-        () => selector(uikitStore.getState())
-    );
+/**
+ * Create an isolated UI kit store (for tests / multi-instance).
+ * Defaults still use the shared singleton for back-compat.
+ * @param {Partial<typeof initialState>} [seed]
+ */
+export function createVoiceKitStore(seed = {}) {
+    const store = new KitStore();
+    if (seed && Object.keys(seed).length) {
+        store.setState({ ...store.getState(), ...seed });
+    }
+    return store;
 }
+
+export function getInitialUiKitState() {
+    return JSON.parse(JSON.stringify(initialState));
+}
+

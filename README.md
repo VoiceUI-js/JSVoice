@@ -11,7 +11,7 @@
 [![Downloads](https://img.shields.io/npm/dm/jsvoice?style=for-the-badge&logo=npm&logoColor=white&color=00C853)](https://www.npmjs.com/package/jsvoice)
 [![Bundle Size](https://img.shields.io/bundlephobia/minzip/jsvoice?style=for-the-badge&logo=webpack&logoColor=white&color=FF6F00)](https://bundlephobia.com/package/jsvoice)
 
-[Documentation](#documentation) • [Quick Start](#quick-start) • [Examples](#examples) • [API](#api-reference) • [Contributing](#contributing)
+[Full Docs](DOCUMENTATION.md) • [User Guide](docs/USER_GUIDE.md) • [API Reference](docs/API_REFERENCE.md) • [Security](docs/SECURITY_AND_PRIVACY.md) • [Contributing](CONTRIBUTING.md)
 
 </div>
 
@@ -33,20 +33,21 @@ JSVoice is a **production-ready JavaScript library** for adding voice commands a
 
 ## Why Choose JSVoice?
 
-### Zero Dependencies
-Pure JavaScript with no external libraries. Minimal bundle size at just 32KB minified and gzipped.
+### Zero runtime dependencies (core)
+The core voice engine has **no runtime npm dependencies**. React is an **optional peer** for the UI kit only.
+
+### Three entry paths
+| Path | Import | Use when |
+|------|--------|----------|
+| **Core** | `createVoice` / `JSVoice` | Commands + TTS only |
+| **React** | `jsvoice/react` | Provider + hooks + HUD |
+| **Hyper Kit** | `jsvoice/react/kit` | Dock, palette, assistant, devtools |
 
 ### TypeScript Support
-Full type definitions included for complete IDE autocomplete and type checking.
-
-### Production Ready
-Comprehensive error handling, extensive documentation, and active maintenance.
-
-### Easy to Use
-Simple API with clear documentation and working examples to get started in minutes.
+Type definitions included (`src/index.d.ts` + kit types).
 
 ### Feature Rich
-Built-in commands, pattern matching, wake word detection, and pluggable engines.
+Built-in DOM actions, pattern matching, wake word, hybrid engines, plugins, packs, and a full voice UI kit.
 
 ---
 
@@ -71,31 +72,61 @@ yarn add jsvoice
 
 ## Quick Start
 
-### Basic Example
+### 1) Core (recommended factory)
 
 ```javascript
-import JSVoice from 'jsvoice';
+import { createVoice } from 'jsvoice';
 
-// Create instance
-// Defaults to "Auto" mode: Uses Browser Native API, falls back to Local AI if unavailable.
-const voice = new JSVoice({
-  onStatusChange: (message) => {
-    console.log('Status:', message);
-  }
+// Hybrid by default: Native Web Speech → local fallback when needed
+const voice = createVoice({
+  onStatusChange: (message) => console.log('Status:', message),
 });
 
-// Add a command
 voice.addCommand('hello world', () => {
   voice.speak('Hello! How can I help you?');
 });
 
-// Start listening
+// Test without mic
+// await voice.processText('hello world');
+
 document.getElementById('mic-button').addEventListener('click', () => {
   voice.toggle();
 });
 ```
 
-That's it! You now have voice commands in your application.
+### 2) React Hyper Kit
+
+```jsx
+import { createVoice } from 'jsvoice';
+import { VoiceKitProvider, VoiceDock, VoiceCommandPalette } from 'jsvoice/react/kit';
+
+const voice = createVoice();
+voice.addCommand('hello', () => voice.speak('Hello'));
+
+export function App() {
+  return (
+    <VoiceKitProvider voice={voice} theme="glassDark" enableKitCommands>
+      <YourApp />
+      <VoiceDock />
+      <VoiceCommandPalette />
+    </VoiceKitProvider>
+  );
+}
+```
+
+**Current package version:** see `package.json` (`1.1.0`).  
+**Security:** see [docs/SECURITY_AND_PRIVACY.md](docs/SECURITY_AND_PRIVACY.md) before enabling voice→DOM automation in production.
+
+### Tooling
+
+```bash
+npm test                 # Jest unit/integration (FakeSpeechEngine)
+npm run test:e2e         # Playwright harness
+npm run storybook        # Hyper Kit component stories
+npm run build            # dist: core + react + kit + ui-kit + porcupine adapter
+```
+
+Optional on-device wake word (Picovoice Porcupine peers): [docs/PORCUPINE_WAKE.md](docs/PORCUPINE_WAKE.md)
 
 ---
 
@@ -121,6 +152,19 @@ Extract variables from voice commands automatically using simple pattern syntax 
 
 ### Pluggable Engines & Hybrid Mode
 JSVoice now uses a smart **Hybrid Engine** by default. It prioritizes the browser's Native Web Speech API for zero-latency performance but automatically falls back to a local, private Transformers.js (Whisper) model if the native API is unsupported (e.g., Firefox) or unreliable.
+
+### Hyper Voice UI Kit
+Premium voice-first React UI system: dock, orb, HUD, command palette, transcript, debug lab, onboarding, rule/widget builders, and theming.
+
+```js
+import { createVoice } from 'jsvoice';
+import { VoiceKitProvider, VoiceDock, VoiceCommandPalette } from 'jsvoice/react/kit';
+
+const voice = createVoice();
+// <VoiceKitProvider voice={voice} theme="glassDark"><VoiceDock /><VoiceCommandPalette /></VoiceKitProvider>
+```
+
+See [docs/HYPER_VOICE_UI_KIT.md](docs/HYPER_VOICE_UI_KIT.md). Demo: `demo-app` → `/ui/hyper`.
 
 ### Plugins & Extensions (New in v2.4)
 JSVoice features a modular plugin system to keep the core lightweight. Import only what you need:

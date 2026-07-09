@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { useUiKitState } from '../../core/store.js';
+import { useUiKitState } from '../../core/useUiKitState.js';
 
 export function VoiceModeOverlay() {
     const active = useUiKitState(s => s.voiceMode);

@@ -10,6 +10,16 @@ class MicrophoneManager {
     }
 
     /**
+     * Reset manager state (tests / full teardown).
+     */
+    reset() {
+        this._stopStream();
+        this.owners.clear();
+        this.pendingPromise = null;
+        this.stream = null;
+    }
+
+    /**
      * Acquire the microphone stream.
      * @param {string} ownerId - Unique ID of the requester (e.g. 'engine', 'visualizer')
      * @param {Object} constraints - Optional MediaStreamConstraints
@@ -48,10 +58,13 @@ class MicrophoneManager {
                 this.stream = await navigator.mediaDevices.getUserMedia(finalConstraints);
 
                 // Handle external stop (User revokes permission / Browser stop button)
-                this.stream.getTracks()[0].onended = () => {
-                    console.warn('[MicrophoneManager] Stream ended externally');
-                    this._cleanup();
-                };
+                const tracks = typeof this.stream.getTracks === 'function' ? this.stream.getTracks() : [];
+                if (tracks[0]) {
+                    tracks[0].onended = () => {
+                        console.warn('[MicrophoneManager] Stream ended externally');
+                        this._cleanup();
+                    };
+                }
 
                 return this.stream;
             } catch (err) {
@@ -84,7 +97,10 @@ class MicrophoneManager {
 
     _stopStream() {
         if (this.stream) {
-            this.stream.getTracks().forEach(t => t.stop());
+            const tracks = typeof this.stream.getTracks === 'function' ? this.stream.getTracks() : [];
+            tracks.forEach((t) => {
+                if (t && typeof t.stop === 'function') t.stop();
+            });
             this.stream = null;
         }
     }
