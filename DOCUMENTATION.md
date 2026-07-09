@@ -701,7 +701,7 @@ Use `'use client'` for voice components. Never call `start()` during SSR. Constr
 
 ### Tests fail on Web Speech in Jest
 
-Use **FakeSpeechEngine** / `createTestVoice` from `test/helpers/` (see also `docs/WHY_TESTS_FAIL.md`). Do not expect real `SpeechRecognition` in jsdom.
+Use **FakeSpeechEngine** / `createTestVoice` from `test/helpers/`. Do not expect real `SpeechRecognition` in jsdom.
 
 ### Porcupine install error
 
@@ -893,7 +893,7 @@ When filing a bug, include:
 | [docs/PORCUPINE_WAKE.md](docs/PORCUPINE_WAKE.md) | On-device wake |
 | [docs/E2E.md](docs/E2E.md) | Playwright |
 | [docs/STORYBOOK.md](docs/STORYBOOK.md) | Storybook |
-| [docs/AUDIT_REPORT.md](docs/AUDIT_REPORT.md) | Quality audit |
+| [docs/QA_HARNESS.md](docs/QA_HARNESS.md) | Demo-app QA harness |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Contributors |
 
 ---

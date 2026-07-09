@@ -25,3 +25,8 @@ playwright/.cache/
 
 # Jest
 .jest/
+jest_output.txt
+*.txt.bak
+
+# Next.js demo
+demo-app/.next/
