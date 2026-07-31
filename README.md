@@ -4,22 +4,38 @@
 
 ### Modern JavaScript Voice Command Library
 
-**Add voice control to your web application. Zero dependencies. TypeScript ready.**
+**Add voice control to your web application. On-device Whisper by default. TypeScript ready.**
 
 [![npm version](https://img.shields.io/npm/v/jsvoice?style=for-the-badge&logo=npm&logoColor=white&color=CB3837)](https://www.npmjs.com/package/jsvoice)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 [![Downloads](https://img.shields.io/npm/dm/jsvoice?style=for-the-badge&logo=npm&logoColor=white&color=00C853)](https://www.npmjs.com/package/jsvoice)
 [![Bundle Size](https://img.shields.io/bundlephobia/minzip/jsvoice?style=for-the-badge&logo=webpack&logoColor=white&color=FF6F00)](https://bundlephobia.com/package/jsvoice)
 
-[Full Docs](DOCUMENTATION.md) • [User Guide](docs/USER_GUIDE.md) • [API Reference](docs/API_REFERENCE.md) • [Security](docs/SECURITY_AND_PRIVACY.md) • [Contributing](CONTRIBUTING.md)
+[Full Docs](DOCUMENTATION.md) • [**AI Implementation Guide**](docs/AI_IMPLEMENTATION.md) • [Browser Whisper](docs/LOCAL_BROWSER_WHISPER.md) • [User Guide](docs/USER_GUIDE.md) • [API Reference](docs/API_REFERENCE.md) • [Security](docs/SECURITY_AND_PRIVACY.md) • [Contributing](CONTRIBUTING.md)
 
 </div>
 
 ---
 
+> ### Start here (humans & AI)
+>
+> | Who | Read first |
+> |-----|------------|
+> | **AI / copilots implementing this package** | **[docs/AI_IMPLEMENTATION.md](docs/AI_IMPLEMENTATION.md)** → [AGENTS.md](AGENTS.md) → [llms.txt](llms.txt) |
+> | **App developers** | Install below → Quick Start → [docs/LOCAL_BROWSER_WHISPER.md](docs/LOCAL_BROWSER_WHISPER.md) |
+> | **End users of a voice app** | [docs/USER_GUIDE.md](docs/USER_GUIDE.md) |
+>
+> **Defaults that matter:** `createVoice()` uses **on-device Whisper tiny** (`engineMode: 'local'`).  
+> Install peer: `npm i jsvoice @xenova/transformers`.  
+> Do **not** gate the app on `JSVoice.isApiSupported` (that is Native Web Speech only).  
+> Call `start()` / `toggle()` only after a **user gesture**.  
+> After npm install, guides live at `node_modules/jsvoice/docs/…` and `node_modules/jsvoice/AGENTS.md`.
+
+---
+
 ## What is JSVoice?
 
-JSVoice is a **production-ready JavaScript library** for adding voice commands and speech synthesis to web applications. Built on the Web Speech API, it provides an intuitive interface for creating voice-enabled experiences with zero dependencies.
+JSVoice is a **production-ready JavaScript library** for adding voice commands and speech synthesis to web applications. By default it understands speech with **open-source Whisper tiny in the browser** (any modern browser, on-device). You can opt into the vendor **Web Speech API** when you prefer zero model download.
 
 **Perfect for:**
 
@@ -33,8 +49,8 @@ JSVoice is a **production-ready JavaScript library** for adding voice commands a
 
 ## Why Choose JSVoice?
 
-### Zero runtime dependencies (core)
-The core voice engine has **no runtime npm dependencies**. React is an **optional peer** for the UI kit only.
+### Lean core + optional peers
+The core library has **no required runtime npm dependencies**. Default speech understanding uses optional peer **`@xenova/transformers`** (browser Whisper). React and Porcupine are optional peers for UI kit / wake word.
 
 ### Three entry paths
 | Path | Import | Use when |
@@ -51,17 +67,29 @@ Built-in DOM actions, pattern matching, wake word, hybrid engines, plugins, pack
 
 ---
 
+## AI agents / copilots
+
+If an AI is implementing this library in your app, point it at:
+
+- **[docs/AI_IMPLEMENTATION.md](docs/AI_IMPLEMENTATION.md)** — full architecture + recipes + anti-patterns  
+- **[AGENTS.md](AGENTS.md)** — short non-negotiable rules  
+- **[llms.txt](llms.txt)** — index for LLM tools  
+
+These ship with the npm package (`node_modules/jsvoice/…`).
+
 ## Installation
 
 **Using NPM:**
 ```bash
-npm install jsvoice
+npm install jsvoice @xenova/transformers
 ```
 
 **Using Yarn:**
 ```bash
-yarn add jsvoice
+yarn add jsvoice @xenova/transformers
 ```
+
+`@xenova/transformers` is required for the **default** on-device Whisper path. Skip it only if you use `engineMode: 'native'`.
 
 **Using CDN:**
 ```html
@@ -77,9 +105,11 @@ yarn add jsvoice
 ```javascript
 import { createVoice } from 'jsvoice';
 
-// Hybrid by default: Native Web Speech → local fallback when needed
+// Default: on-device Whisper tiny (works in any modern browser)
+// Peer: npm install @xenova/transformers
 const voice = createVoice({
   onStatusChange: (message) => console.log('Status:', message),
+  onModelLoadProgress: (p) => console.log('Model', p.status, p.progress),
 });
 
 voice.addCommand('hello world', () => {
@@ -93,6 +123,10 @@ document.getElementById('mic-button').addEventListener('click', () => {
   voice.toggle();
 });
 ```
+
+> **Behavior change:** `createVoice()` now defaults to **browser Whisper-tiny** (private, any browser).  
+> For vendor Web Speech only: `createVoice({ engineMode: 'native' })`.  
+> Guide: [docs/LOCAL_BROWSER_WHISPER.md](docs/LOCAL_BROWSER_WHISPER.md)
 
 ### 2) React Hyper Kit
 
@@ -142,16 +176,15 @@ Text-to-speech output with multiple voices, customizable speech parameters inclu
 Easy registration of exact phrase commands and pattern-based commands with automatic variable extraction for dynamic command handling.
 
 ### Wake Word Detection
-Hands-free activation with configurable wake words like "Hey Assistant".
-*Note: Currently uses cloud-based recognition APIs. On-device WASM detection is on the roadmap.*
+Hands-free activation with configurable wake words like "Hey Assistant" (phrase match on STT transcripts). With the **default local** engine, transcripts stay on-device; with **`engineMode: 'native'`**, browser vendors may stream audio. Optional **Porcupine** adapter for true on-device KWS: [docs/PORCUPINE_WAKE.md](docs/PORCUPINE_WAKE.md).
 
 ### Pattern Matching
 Extract variables from voice commands automatically using simple pattern syntax like `{variable}` for dynamic command processing.
 
 
 
-### Pluggable Engines & Hybrid Mode
-JSVoice now uses a smart **Hybrid Engine** by default. It prioritizes the browser's Native Web Speech API for zero-latency performance but automatically falls back to a local, private Transformers.js (Whisper) model if the native API is unsupported (e.g., Firefox) or unreliable.
+### Pluggable engines (local Whisper by default)
+`createVoice()` uses a **Hybrid** wrapper with **`engineMode: 'local'`** by default: on-device **Whisper tiny.en** via Transformers.js so recognition works in Chrome, Edge, Firefox, Safari, and other modern browsers. Use `engineMode: 'native'` for vendor Web Speech only, or `auto` for local-first with native fallback if local cannot load. See [docs/LOCAL_BROWSER_WHISPER.md](docs/LOCAL_BROWSER_WHISPER.md).
 
 ### Hyper Voice UI Kit
 Premium voice-first React UI system: dock, orb, HUD, command palette, transcript, debug lab, onboarding, rule/widget builders, and theming.
@@ -359,35 +392,37 @@ Each module comes with pre-built voice commands and React components.
 
 All modules are zero-rupee, strictly local, and SSR-safe.
 
-### "Free Mode" (Private & Offline)
-You can force JSVoice to run entirely offline using the `engineMode: 'local'` option. This uses [Transformers.js](https://huggingface.co/docs/transformers.js) to run OpenAI's Whisper model directly in the browser via WebAssembly/WebGPU. No data leaves the device.
+### Default: Private browser Whisper (any browser)
+`createVoice()` uses [Transformers.js](https://huggingface.co/docs/transformers.js) + **Whisper tiny (English)** in a Web Worker. No audio leaves the device. Works where Web Speech is missing (e.g. Firefox). First visit downloads ~30MB (then cached). Details: [docs/LOCAL_BROWSER_WHISPER.md](docs/LOCAL_BROWSER_WHISPER.md).
 
 ---
 
 ## Native vs. Local Engine
 
-| Feature | Native (Web Speech API) | Local (Transformers.js) |
+| Feature | Local (default) | Native (`engineMode: 'native'`) |
 | :--- | :--- | :--- |
-| **Speed** | Instant (Cloud-assisted) | Fast (Device dependent) |
-| **Accuracy** | High (Google/Apple Cloud) | Good (Whisper Tiny/Base) |
-| **Privacy** | Data sent to Big Tech | **100% Private / Offline** |
-| **Cost** | Free (Unlimited) | Free (Zero Rupee) |
-| **Browser Support** | Chrome, Safari, Edge | **All Browsers** (Firefox included) |
-| **Setup** | Zero setup | First-load model download (~30MB) |
+| **Model** | Whisper tiny.en on-device | Browser / OS speech service |
+| **Speed** | After each utterance (VAD) | Streaming partials |
+| **Accuracy** | Good for commands | High (vendor cloud) |
+| **Privacy** | **On-device** | Often leaves device |
+| **Browser support** | **Any modern browser** | Chrome, Safari, Edge (varies) |
+| **Setup** | Peer `@xenova/transformers` + first ~30MB download | No model download |
 
 ---
 
-## Auto Mode & Fallback Policy
-JSVoice v2.2 introduces an explicit `HybridPolicy`. By default (`native`), the browser's Web Speech API is used. If this fails due to network issues or browser incompatibility (e.g., Firefox), the system checks the `CircuitBreaker`. If the breaker opens (3 faults/60s), JSVoice automatically activates the **Local Engine** (Transformers.js/Whisper) to ensure voice commands continue to work offline.
+## Engine modes
+*   **`local` (default)** — on-device Whisper tiny; portable + private.
+*   **`native`** — Web Speech API only.
+*   **`auto`** — local first; fall back to native if local cannot initialize.
 
 ## Permission Denied Behavior
 **Security Note:** If a user explicitly denies Microphone permission (`NotAllowedError`), JSVoice will **NOT** attempt to fall back or bypass this. The stream manager enters a `stopped` state and requires user intervention (UI button click) to re-request access.
 
 ## Local Engine Performance
-The Local Engine runs `whisper-tiny` (approx 30MB) in a Web Worker.
-*   **First Load:** Downloads model from CDN (cached via Cache API).
+The Local Engine runs `whisper-tiny.en` (approx 30MB) in a Web Worker with AudioWorklet capture and energy VAD.
+*   **First Load:** Downloads model (cached via Cache API).
 *   **Privacy:** All audio processing happens on-device.
-*   **Mobile Data:** Uses `navigator.connection.saveData` to avoid downloading on restricted networks unless overridden.
+*   **Save-Data:** May require confirm before download on constrained networks.
 
 ---
 
@@ -395,7 +430,7 @@ The Local Engine runs `whisper-tiny` (approx 30MB) in a Web Worker.
 Seven categories of pre-built commands including scrolling, zooming, clicking, form filling, content reading, theme control, and navigation.
 
 ### Multi-language Support
-Support for 50+ languages through the Web Speech API including en-US, es-ES, fr-FR, de-DE, ja-JP, zh-CN, and many more.
+**Default local model is English** (`whisper-tiny.en`). Multi-locale STT via **`engineMode: 'native'`** uses the Web Speech API (50+ languages where the browser supports them). Multilingual on-device models are not the default this ship.
 
 ---
 
@@ -456,24 +491,22 @@ voice.addPatternCommand('set volume to {level}', (args) => {
 // Result: Volume set to 75%
 ```
 
-### Wake Word Detection (Text-Stream Based)
+### Wake Word Detection (Transcript-Based)
 
-**⚠️ PRIVACY WARNING:**
-This feature currently relies on **continuous text streaming**. Even if you are only waiting for "Hey Computer", the audio is being sent to the speech recognition provider (e.g., Google, OpenAI) to be transcribed into text *before* JSVoice checks for the keyword.
-*   **Do not use this** if you require strictly offline privacy (unless using a local engine).
-*   **Do not use this** with paid APIs (like Whisper) for "always on" listening, as it will incur massive costs.
+Wake word matches a phrase inside STT results (not a separate always-on KWS model).
 
-To enable wake word:
-
-> ⚠️ **Privacy Notice:** This feature currently relies on the browser's speech recognition engine (Web Speech API). In Chrome, this means audio is streamed to Google servers effectively continuously to detect the phrase. For strictly private/offline environments, this is not yet recommended.
+**Privacy notes:**
+*   **Default local engine:** audio is processed on-device with Whisper tiny; the mic stays open while waiting for the phrase.
+*   **`engineMode: 'native'`:** vendors may stream audio continuously — avoid for strict privacy.
+*   **Server Whisper API:** do not use paid APIs for always-on wake (cost). Prefer local STT or [Porcupine](docs/PORCUPINE_WAKE.md).
 
 ```javascript
-const voice = new JSVoice({
+const voice = createVoice({
   wakeWord: 'hey assistant',
   wakeWordTimeout: 5000,
   onWakeWordDetected: (word) => {
     console.log('Wake word detected:', word);
-  }
+  },
 });
 
 // User says: "hey assistant"
@@ -593,12 +626,12 @@ if (voice.microphoneAllowed) {
 ```
 
 **isApiSupported**  
-Static property that returns true if Web Speech API is supported.
+Static property that returns true if the **Native Web Speech** constructor exists.  
+Default **local** Whisper does **not** require this — it only needs mic + Worker + WASM. Use `engineMode: 'native'` when you depend on this flag.
 
 ```javascript
-if (JSVoice.isApiSupported) {
-  const voice = new JSVoice();
-}
+// Prefer createVoice() (local Whisper works even when isApiSupported is false)
+const voice = createVoice();
 ```
 
 **voiceFeedback**  
@@ -613,23 +646,31 @@ console.log(voice.voiceFeedback);
 ## Configuration Options
 
 ```javascript
-const voice = new JSVoice({
+const voice = createVoice({
+  // Engine (createVoice)
+  engineMode: 'local',           // default: browser Whisper tiny; 'native' | 'auto'
+  localOptions: {                // on-device Whisper
+    model: 'Xenova/whisper-tiny.en',
+    vad: { enabled: true, silenceMs: 1200 },
+  },
+  onModelLoadProgress: (p) => {},
+
   // Recognition settings
-  continuous: true,              // Keep listening continuously
-  interimResults: true,          // Show interim recognition results
-  lang: 'en-US',                // Recognition language
-  autoRestart: true,            // Auto-restart on error
-  restartDelay: 500,            // Restart delay in milliseconds
-  engines: [],                  // Custom engine classes (try first)
+  continuous: true,              // Keep listening / auto-restart utterances
+  interimResults: true,          // Native path only (local is utterance-based)
+  lang: 'en-US',                // Mainly for native path / TTS
+  autoRestart: true,
+  restartDelay: 500,
+  engines: [],                  // Custom engine classes (advanced)
   engine: null,                 // Specific engine instance
   
   // Wake word settings
   wakeWord: null,               // Wake word phrase (e.g., 'hey assistant')
-  wakeWordTimeout: 5000,        // Timeout after wake word in milliseconds
+  wakeWordTimeout: 5000,
   
   // Initial commands
-  commands: {},                 // Object of exact phrase commands
-  patternCommands: [],          // Array of pattern commands
+  commands: {},
+  patternCommands: [],
   
   // Event callbacks
   onSpeechStart: () => {},
@@ -649,32 +690,30 @@ const voice = new JSVoice({
 
 ## Browser Support
 
-**Fully Supported:**
-- Google Chrome 25+
-- Microsoft Edge 79+
-- Opera 27+
+**Default local Whisper** (recommended) needs a modern browser with:
+- Microphone (`getUserMedia`)
+- Web Workers + WASM
+- Secure context (HTTPS or localhost)
 
-**Partially Supported:**
-- Safari 14.1+ (iOS 14.5+ required)
-
-**Not Supported:**
-- Mozilla Firefox (Web Speech API not implemented)
+| Browser | Default local Whisper | Native Web Speech (`engineMode: 'native'`) |
+|---------|----------------------|--------------------------------------------|
+| Chrome / Edge / Opera | Yes | Yes |
+| Firefox | Yes | No (API not implemented) |
+| Safari | Yes (device-dependent perf) | Partial |
 
 **Requirements:**
-- HTTPS connection (required for microphone access)
-- User gesture to initiate (click or tap)
-- Microphone permission granted by user
-
-**Browser Detection:**
+- HTTPS or localhost (mic)
+- User gesture to start
+- Peer `@xenova/transformers` for default path
+- First visit may download ~30MB model (then cached)
 
 ```javascript
-if (JSVoice.isApiSupported) {
-  // Initialize voice features
-  const voice = new JSVoice();
-} else {
-  // Show fallback message
-  console.warn('Voice commands not supported in this browser');
-  alert('Please use Chrome, Edge, or Safari for voice features');
+// Works in Firefox and Chrome without checking Web Speech support
+const voice = createVoice();
+
+// Only if you force native:
+if (!JSVoice.isApiSupported) {
+  console.warn('Native Web Speech unavailable; use default local or install transformers peer');
 }
 ```
 

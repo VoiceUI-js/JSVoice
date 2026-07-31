@@ -1,13 +1,19 @@
-# Whisper Engine Reference Implementation
+# Server Whisper Engine (API / proxy)
 
-This directory contains resources for implementing high-accuracy, server-side speech recognition using OpenAI's Whisper model (or compatible APIs like Groq/Deepgram) with JSVoice.
+> **Looking for the default browser model?**  
+> JSVoice’s **default** understander is **on-device** `Xenova/whisper-tiny.en` (any browser).  
+> See **[docs/LOCAL_BROWSER_WHISPER.md](../docs/LOCAL_BROWSER_WHISPER.md)**.
+
+This document covers the **optional server-side** path: OpenAI Whisper (or compatible APIs) via `WhisperSpeechEngine` and a backend proxy.
 
 ## Why Use Whisper?
 
-The Native Web Speech API is free and fast, but:
-- It requires an active internet connection (Chrome).
-- It is not supported in Firefox.
-- It has lower accuracy for accents or technical terms.
+**Prefer default browser Whisper?** Use `createVoice()` + `@xenova/transformers` (no server key).  
+This server integration is for higher-accuracy / hosted models when you already run a backend.
+
+Compared to Native Web Speech API alone:
+- Native often needs network (Chrome) and is missing in Firefox.
+- Server Whisper can be more accurate for accents or technical terms (with latency/cost).
 
 **Whisper Offerings:**
 - Near-perfect accuracy.

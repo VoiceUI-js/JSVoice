@@ -1,0 +1,44 @@
+# jsvoice
+
+> Browser voice-command library. Default STT: on-device Whisper tiny (any modern browser). Optional Native Web Speech and React Hyper UI Kit.
+
+## Lead (read first)
+
+- /docs/AI_IMPLEMENTATION.md — primary AI implementation guide
+- /AGENTS.md — non-negotiable rules
+- /src/index.js — package entry (header comments = same rules)
+- /README.md — human quick start + Start here table
+
+## Critical
+
+- Package: `jsvoice`
+- Default: `createVoice()` → engineMode `local` → `Xenova/whisper-tiny.en`
+- Peer: `@xenova/transformers` required for default path
+- Do not gate on `JSVoice.isApiSupported` (Native only)
+- User gesture required for `start()` / `toggle()`
+
+## AI must-read (in order)
+
+- /AGENTS.md
+- /docs/AI_IMPLEMENTATION.md
+- /docs/LOCAL_BROWSER_WHISPER.md
+- /docs/API_REFERENCE.md
+- /docs/SECURITY_AND_PRIVACY.md
+- /DOCUMENTATION.md
+- /README.md
+- /src/index.js
+- /src/index.d.ts
+
+## Optional deeper docs
+
+- /docs/HYPER_VOICE_UI_KIT.md
+- /docs/HYPER_VOICE_MIGRATION.md
+- /docs/USER_GUIDE.md
+- /examples/setup.js
+- /examples/WHISPER_INTEGRATION.md (server Whisper API only)
+
+## Install
+
+```bash
+npm install jsvoice @xenova/transformers
+```

@@ -9,10 +9,25 @@ Complete developer documentation for the JSVoice browser voice-command library a
 
 ---
 
+> ### Lead guide — read this before integrating
+>
+> 1. **AI coding agents:** open **[docs/AI_IMPLEMENTATION.md](docs/AI_IMPLEMENTATION.md)** first (then [AGENTS.md](AGENTS.md)).
+> 2. **Default speech path:** on-device Whisper tiny via `createVoice()` — not Web Speech. Details: [docs/LOCAL_BROWSER_WHISPER.md](docs/LOCAL_BROWSER_WHISPER.md).
+> 3. **Install:** `npm install jsvoice @xenova/transformers`
+> 4. **Do not** use `JSVoice.isApiSupported` as a hard browser gate (local Whisper works without Native STT).
+> 5. **Mic:** only `start()` / `toggle()` after a user click/tap.
+> 6. **API tables:** [docs/API_REFERENCE.md](docs/API_REFERENCE.md) · **Privacy:** [docs/SECURITY_AND_PRIVACY.md](docs/SECURITY_AND_PRIVACY.md)
+> 7. On npm: `node_modules/jsvoice/docs/AI_IMPLEMENTATION.md`
+
+---
+
 ## Companion docs (Markdown only)
 
 | Doc | Audience |
 |-----|----------|
+| **[docs/AI_IMPLEMENTATION.md](docs/AI_IMPLEMENTATION.md)** | **AI coding agents** — implement the library correctly |
+| **[AGENTS.md](AGENTS.md)** / **[llms.txt](llms.txt)** | Short AI rules + LLM index (shipped on npm) |
+| **[docs/LOCAL_BROWSER_WHISPER.md](docs/LOCAL_BROWSER_WHISPER.md)** | Default on-device Whisper tiny |
 | **[docs/USER_GUIDE.md](docs/USER_GUIDE.md)** | Non-developers / end users of voice-enabled apps |
 | **[docs/API_REFERENCE.md](docs/API_REFERENCE.md)** | Developers — API-only reference |
 | **[docs/SECURITY_AND_PRIVACY.md](docs/SECURITY_AND_PRIVACY.md)** | Privacy & voice→DOM safety |
@@ -52,7 +67,7 @@ Complete developer documentation for the JSVoice browser voice-command library a
 
 **JSVoice** is a modern **JavaScript voice-command library for the browser**. It turns speech into structured commands, speaks responses with text-to-speech (TTS), and optionally provides a full **React Hyper Voice UI Kit** (dock, command palette, transcripts, settings, debug tools, and more).
 
-It solves the problem of wiring the raw **Web Speech API** yourself: lifecycle, restarts, permissions, pattern matching, scopes, plugins, hybrid engines, and product-grade UI.
+It solves speech-to-command for the web: **on-device Whisper tiny by default** (any modern browser), optional Native Web Speech, plus lifecycle, restarts, permissions, pattern matching, scopes, plugins, hybrid engines, and a product-grade UI kit.
 
 ### Problems it solves
 
@@ -60,7 +75,7 @@ It solves the problem of wiring the raw **Web Speech API** yourself: lifecycle, 
 |---------|------------------|
 | Web Speech is verbose and browser-specific | `createVoice()` + engine abstraction |
 | Commands need patterns and variables | `{name}`, `{level:int}`, scopes, priorities |
-| Firefox / unreliable Native STT | Hybrid engine with local fallback path |
+| Firefox / no Native STT | **Default local Whisper** works without Web Speech |
 | Need a product UI, not only an API | Hyper Voice UI Kit (`jsvoice/react/kit`) |
 | Hard to test without a microphone | `processText()` + FakeSpeechEngine harness |
 
@@ -74,7 +89,8 @@ It solves the problem of wiring the raw **Web Speech API** yourself: lifecycle, 
 - **Plugins** (VAD, hotkeys, fuzzy match, session recorder, help, …)  
 - **Command packs** (navigation, forms, media, kit UI packs)  
 - **React hooks + Hyper UI Kit** (dock, palette, assistant, devtools, widgets, …)  
-- **Zero runtime dependencies** for the core package  
+- **Lean core**; default STT uses optional peer `@xenova/transformers`  
+
 - **TypeScript definitions** included  
 
 ### Who it’s for
@@ -92,10 +108,10 @@ It solves the problem of wiring the raw **Web Speech API** yourself: lifecycle, 
 | Layer | Technology |
 |-------|------------|
 | Language | JavaScript (ES modules) |
-| Platform | Browsers (Web Speech API, MediaDevices) |
+| Platform | Browsers (MediaDevices + Worker/WASM; optional Web Speech) |
 | Build | Rollup → CJS / ESM / UMD |
 | UI (optional) | React ≥ 17 (peer dependency) |
-| Local STT (optional) | Transformers.js / Whisper-style engines |
+| Local STT (**default**) | Transformers.js + Whisper tiny.en (any browser); peer `@xenova/transformers` |
 | Wake (optional peer) | Picovoice Porcupine Web |
 | Tests | Jest + FakeSpeechEngine; Playwright E2E |
 | Demo | Next.js app under `demo-app/` |
@@ -107,21 +123,25 @@ It solves the problem of wiring the raw **Web Speech API** yourself: lifecycle, 
 ### Prerequisites
 
 - **Node.js** 18+ recommended (16+ may work)  
-- A **modern browser** (Chrome/Edge best for Native Web Speech; Hybrid helps elsewhere)  
+- A **modern browser** with mic + Workers (default local Whisper); peer `@xenova/transformers`  
+- Optional: Chrome/Edge/Safari if using `engineMode: 'native'`
 - **HTTPS or `localhost`** (required for microphone access)  
 - For React kit: **React 17+** and **react-dom**  
 
 ### Installation
 
-**1. Install the package**
+**1. Install the package + default speech peer**
 
 ```bash
-npm install jsvoice
+npm install jsvoice @xenova/transformers
 # or
-yarn add jsvoice
+yarn add jsvoice @xenova/transformers
 # or
-pnpm add jsvoice
+pnpm add jsvoice @xenova/transformers
 ```
+
+`@xenova/transformers` is required for the **default** on-device Whisper path.  
+Skip it only if you use `createVoice({ engineMode: 'native' })`.
 
 **2. (Optional) React peers for UI kit**
 
@@ -146,11 +166,15 @@ npm install @picovoice/porcupine-web @picovoice/web-voice-processor
 
 ### Quick start — Core (minimal)
 
+Default STT is **browser Whisper tiny** ([docs/LOCAL_BROWSER_WHISPER.md](docs/LOCAL_BROWSER_WHISPER.md)).
+
 ```javascript
 import { createVoice } from 'jsvoice';
 
 const voice = createVoice({
-  lang: 'en-US',
+  // engineMode: 'local', // default — any modern browser, on-device
+  // engineMode: 'native', // optional vendor Web Speech
+  onModelLoadProgress: (p) => console.log('model', p.status, p.progress),
   onStatusChange: (msg) => console.log(msg),
   onError: (err) => console.error(err),
 });
@@ -225,7 +249,7 @@ Open:
 
 ```
 User speech
-    → Speech engine (Native | Hybrid | Whisper/Local | injected Fake)
+    → Speech engine (Local Whisper default | Native | Hybrid policy | server Whisper | Fake)
     → RecognitionManager (lifecycle, restarts, errors)
     → JSVoice._handleSpeechResult
          → CommandManager (exact / pattern / scopes)
@@ -240,7 +264,7 @@ User speech
 src/
   JSVoice.js              # Core class
   index.js                # createVoice factory + re-exports
-  engines/                # Native, Hybrid, Whisper, Local, Porcupine adapter
+  engines/                # Local (default), Hybrid, Native, server Whisper, Porcupine adapter
   modules/                # Recognition, CommandManager, mic, actions, …
   plugins/                # VAD, Hotkeys, Fuzzy, SessionRecorder, Help, kit
   packs/                  # basic + kit command packs
@@ -266,9 +290,11 @@ docs/                     # Topic guides (security, kit, e2e, …)
 | `jsvoice/ui-kit` | Store, theme, actions (mostly framework-agnostic) |
 | `jsvoice/packs/basic` | Navigation / Form / Media packs |
 | `jsvoice/packs/kit` | UI kit command packs |
+| `jsvoice/engines/local` | **Default** on-device Whisper tiny (`LocalTransformersSpeechEngine`) |
+| `jsvoice/engines/hybrid` | Hybrid policy wrapper (`local` / `native` / `auto`) |
+| `jsvoice/engines/native` | Native Web Speech engine (opt-in) |
+| `jsvoice/engines/whisper` | Server / API Whisper engine |
 | `jsvoice/engines/porcupine-wake` | Optional on-device wake adapter |
-| `jsvoice/engines/native` | Native engine class |
-| `jsvoice/engines/whisper` | Whisper engine class |
 
 React is **external** in kit bundles — your app supplies `react` / `react-dom`.
 
@@ -276,7 +302,7 @@ React is **external** in kit bundles — your app supplies `react` / `react-dom`
 
 #### Factory: `createVoice(options?)`
 
-Creates a voice instance with **Hybrid** defaults (Native first, local fallback when appropriate).
+Creates a voice instance with **local Whisper tiny** by default (`engineMode: 'local'`). Opt into Native with `engineMode: 'native'`, or local-first fallback with `auto`.
 
 ```js
 import { createVoice, JSVoice } from 'jsvoice';
@@ -409,17 +435,19 @@ await voice.processText('set volume to 5');
 
 | Engine | Role |
 |--------|------|
-| **NativeSpeechEngine** | Browser Web Speech API |
-| **HybridSpeechEngine** | Native first; local fallback when needed |
-| **WhisperSpeechEngine** / **LocalTransformersSpeechEngine** | On-device / local ASR paths |
+| **LocalTransformersSpeechEngine** | **Default** on-device Whisper tiny.en (any browser) |
+| **HybridSpeechEngine** | Policy wrapper: `local` (default) / `native` / `auto` |
+| **NativeSpeechEngine** | Browser Web Speech API (opt-in) |
+| **WhisperSpeechEngine** | Server / API Whisper proxy path |
 | **Injected engine** | Tests: FakeSpeechEngine; custom adapters |
 
 ```js
 import { createVoice } from 'jsvoice';
 import NativeSpeechEngine from 'jsvoice/engines/native';
 
-// Default hybrid via createVoice()
+// Default: browser Whisper tiny via createVoice()
 const voice = createVoice();
+// createVoice({ engineMode: 'native' }) // vendor Web Speech only
 
 // Or pure core + explicit engine
 import JSVoice from 'jsvoice/core';
@@ -676,7 +704,8 @@ Use **Command tester** / `processText` and inspect **command trace** + analytics
 
 ### Works in Chrome, fails in Firefox
 
-Native Web Speech support varies. Prefer **`createVoice()` Hybrid** defaults and/or local engine path. See engine docs.
+Default **`createVoice()`** uses on-device Whisper and should work in Firefox (mic + Worker + `@xenova/transformers`).  
+If you set `engineMode: 'native'`, Firefox has no Web Speech API — switch back to local or `auto`. See [docs/LOCAL_BROWSER_WHISPER.md](docs/LOCAL_BROWSER_WHISPER.md).
 
 ### `onCommandNotRecognized` always fires
 
@@ -710,7 +739,7 @@ Peers are optional. Install `@picovoice/porcupine-web` and `@picovoice/web-voice
 ### FAQ
 
 **Q: Does audio leave the device?**  
-**A:** With **Native** Web Speech, often yes (browser/vendor). With **local** engines / Porcupine, processing is designed to stay on-device. See Security & Privacy doc.
+**A:** **Default is local Whisper** — audio stays on-device (model weights download once). With **`engineMode: 'native'`**, audio often goes to the browser vendor. Porcupine wake is on-device. See Security & Privacy doc.
 
 **Q: Can I use this without React?**  
 **A:** Yes. Core and many utils are vanilla JS. React is optional.
@@ -727,7 +756,8 @@ Peers are optional. Install `@picovoice/porcupine-web` and `@picovoice/web-voice
 
 ### Do
 
-- Use **`createVoice()`** for defaults unless you need a custom engine graph.  
+- Use **`createVoice()`** for defaults (local Whisper). Pass `engineMode: 'native'` only if you want vendor STT.  
+  See [docs/LOCAL_BROWSER_WHISPER.md](docs/LOCAL_BROWSER_WHISPER.md).
 - Prefer **`listCommands` / `processText`** over private fields.  
 - Gate **destructive** actions behind confirm UI + high `minConfidence`.  
 - Use **scopes** for multi-page apps.  
@@ -847,7 +877,7 @@ Maintain a root `CHANGELOG.md` if you publish tagged releases (`v1.1.0`, …).
 | **TTS** | Text-to-speech (synthesis) |
 | **Web Speech API** | Browser API for STT/TTS |
 | **Engine** | Adapter implementing recognition lifecycle |
-| **Hybrid** | Native engine first, local fallback when needed |
+| **Hybrid** | Engine policy wrapper; default mode **local** Whisper, optional **native** / **auto** |
 | **Wake word** | Phrase that arms command listening |
 | **Pattern command** | Phrase with `{variables}` / typed entities |
 | **Scope** | Namespace limiting which commands are active |

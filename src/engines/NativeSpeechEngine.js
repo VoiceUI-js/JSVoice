@@ -1,3 +1,12 @@
+/**
+ * Native Web Speech API engine — OPT-IN only.
+ *
+ * LEAD: createVoice() defaults to local Whisper, not this engine.
+ * Use createVoice({ engineMode: 'native' }) or inject this class.
+ * Unavailable in Firefox. May send audio to browser vendor (privacy).
+ * isApiSupported checks THIS path only — not local Whisper.
+ * Guides: docs/AI_IMPLEMENTATION.md · docs/LOCAL_BROWSER_WHISPER.md
+ */
 import BaseSpeechEngine from './BaseSpeechEngine.js';
 
 class NativeSpeechEngine extends BaseSpeechEngine {

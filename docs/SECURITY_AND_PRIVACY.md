@@ -2,17 +2,29 @@
 
 **Audience:** teams enabling JSVoice built-in DOM actions or Hyper Voice Mode in production apps.
 
+> **Lead:** Default STT is **on-device Whisper** (audio stays on device; model may download once).  
+> Native Web Speech (`engineMode: 'native'`) may send audio to the browser vendor.  
+> Implementers: [AI_IMPLEMENTATION.md](./AI_IMPLEMENTATION.md) § security · [AGENTS.md](../AGENTS.md).
+
 ---
 
 ## Data flow summary
 
 | Mode | Audio leaves the device? | Notes |
 |------|--------------------------|--------|
-| **Native Web Speech** | **Often yes** (browser / OS speech service) | Chrome/Edge typically use cloud-backed recognition. Treat as **not fully private**. |
-| **Local / Transformers engine** | **No** (on-device model) | Larger download; better privacy when configured correctly. |
-| **Hybrid** | Depends on active path | Prefer local when Native is unavailable or for privacy-sensitive apps. |
+| **Local / Transformers (default)** | **No** (on-device Whisper tiny) | First load downloads model weights (~30MB); audio is processed in a Worker. See [LOCAL_BROWSER_WHISPER.md](./LOCAL_BROWSER_WHISPER.md). |
+| **Native Web Speech** | **Often yes** (browser / OS speech service) | Opt-in via `engineMode: 'native'`. Chrome/Edge typically use cloud-backed recognition. |
+| **Hybrid `auto`** | Local first; Native only if local fails | Prefer pure `local` for guaranteed on-device. |
+| **Server Whisper API** | **Yes** (your proxy / provider) | Separate engine: `jsvoice/engines/whisper`. |
 | **Kit transcripts** | Not persisted by default | Opt-in only via settings / session export flags. |
 | **Raw microphone audio** | Never stored by the kit | Permission probes stop tracks after check. |
+
+### CSP (local model)
+
+- Allow WASM as required by Transformers.js.
+- Allow `connect-src` to your model host (Hugging Face or self-hosted).
+- Restrict `worker-src` to your origin.
+- Leave `localOptions.allowCdnFallback` **false** unless CDN + CSP are intentional.
 
 ---
 
@@ -91,7 +103,9 @@ If you find a security issue in JSVoice, open a private security advisory on the
 
 ## Checklist before production
 
-- [ ] Document which engines you use (Native vs local) for privacy reviewers  
+- [ ] Document engines for privacy reviewers (default = local Whisper; note if `engineMode: 'native'`)  
+- [ ] Install `@xenova/transformers` for default path; document first-load model download (~30MB)  
+
 - [ ] Disable or scope built-in DOM actions on checkout/admin  
 - [ ] Confirm destructive voice actions  
 - [ ] No transcript persistence unless required and disclosed  

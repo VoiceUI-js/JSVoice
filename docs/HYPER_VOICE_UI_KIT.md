@@ -44,12 +44,20 @@ Core store/theme/utils live in `jsvoice/ui-kit` (framework-agnostic logic + opti
 
 ## Quick start
 
+```bash
+npm install jsvoice @xenova/transformers react react-dom
+```
+
+`createVoice()` defaults to **on-device Whisper tiny**. See [LOCAL_BROWSER_WHISPER.md](LOCAL_BROWSER_WHISPER.md).
+
 ```jsx
 'use client';
 import { createVoice } from 'jsvoice';
 import { VoiceKitProvider, VoiceDock, VoiceCommandPalette, VoiceHUD } from 'jsvoice/react/kit';
 
-const voice = createVoice();
+const voice = createVoice({
+  onModelLoadProgress: (p) => console.log(p),
+});
 voice.addCommand('hello', () => voice.speak('Hello'));
 
 export function App() {

@@ -1,3 +1,19 @@
+## Unreleased — Default browser Whisper tiny
+
+### Behavior change
+- `createVoice()` now defaults to **`engineMode: 'local'`** — on-device **Whisper tiny.en** via Transformers.js so speech understanding works in **any modern browser** (including Firefox).
+- Install peer: `npm install @xenova/transformers`.
+- To restore vendor Web Speech only: `createVoice({ engineMode: 'native' })`.
+
+### Features
+- Production local engine: AudioWorklet capture (ScriptProcessor fallback), energy VAD endpointing, model ready lifecycle, progress/telemetry.
+- Package exports: `jsvoice/engines/local`, `jsvoice/engines/hybrid`.
+- Kit: `VoiceModelLoadCard`, `VoiceTransformersMissingCard`.
+- Docs: [docs/LOCAL_BROWSER_WHISPER.md](docs/LOCAL_BROWSER_WHISPER.md).
+- **AI agent docs** (shipped with npm): [docs/AI_IMPLEMENTATION.md](docs/AI_IMPLEMENTATION.md), [AGENTS.md](AGENTS.md), [llms.txt](llms.txt).
+
+---
+
 ### Refactoring Plan: Modular Architecture (Phase 1)
 
 **Goal**: Decouple `JSVoice.js` from direct state management and helper injection, moving towards an event-driven architecture.

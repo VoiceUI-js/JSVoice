@@ -10,18 +10,19 @@
 
 ## 1. Introduction
 
-**JSVoice** is a production-grade JavaScript library that enables voice interaction in web applications. It serves as a robust wrapper around the standard [Web Speech API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API), normalizing inconsistent browser behaviors and adding a powerful command management layer.
+**JSVoice** is a production-grade JavaScript library that enables voice interaction in web applications. By default it understands speech with **open-source Whisper tiny in the browser** (Transformers.js). You can also opt into the [Web Speech API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API) via `engineMode: 'native'`.
 
 ### What It Does
-*   **Normalizes Speech Recognition:** Handles differences between Chrome, Edge, Safari, and mobile browsers.
-*   **Manages State:** Tracks microphone permissions, listening states, and engine lifecycles.
+*   **Understands speech in any modern browser:** Default on-device Whisper tiny (Chrome, Edge, Firefox, Safari with mic + Workers).
+*   **Optional Native STT:** Vendor Web Speech when you set `engineMode: 'native'`.
+*   **Manages State:** Tracks microphone permissions, listening states, model load, and engine lifecycles.
 *   **Parses Commands:** Matches spoken phrases to functions, including variable extraction (e.g., "Set volume to 50%").
 *   **Isolates Context:** Supports "Scopes" to enable/disable commands based on the active UI screen.
-*   **Synthesizes Speech:** Provides a clean text-to-speech API.
+*   **Synthesizes Speech:** Provides a clean text-to-speech API (browser TTS).
 
 ### What It Is NOT
-*   **Not a Cloud Service:** It does not stream audio to JSVoice servers. It strictly uses the browser's native capabilities (which may stream to Google/Apple depending on the browser vendor).
-*   **Not an NLU/LLM:** It does not "understand" intent like ChatGPT. It matches defined phrases and patterns.
+*   **Not a JSVoice cloud service:** Audio is not sent to JSVoice servers. Default local path keeps audio on-device; Native mode may use the browser vendor.
+*   **Not an NLU/LLM:** It does not "understand" free-form intent like ChatGPT. It matches defined phrases and patterns.
 *   **Not a Magic Wand:** It cannot bypass browser security rules (e.g., must be triggered by a user click).
 
 ---
@@ -39,34 +40,48 @@
 
 | Feature | Chrome / Edge | Safari (iOS/Mac) | Firefox |
 | :--- | :--- | :--- | :--- |
-| **Recognition** | ✅ Excellent (Cloud) | ⚠️ Good (Device/Cloud) | ❌ Unsupported |
-| **Synthesis** | ✅ Excellent | ✅ Excellent | ✅ Good |
-| **Microphone** | ✅ Standard permissions | ⚠️ Strict lifecycle | ✅ Standard permissions |
+| **Default local Whisper** | ✅ | ✅ (device-dependent) | ✅ |
+| **Native Web Speech** | ✅ (often cloud) | ⚠️ Partial | ❌ Unsupported |
+| **Synthesis (TTS)** | ✅ | ✅ | ✅ |
+| **Microphone** | ✅ | ⚠️ Strict lifecycle | ✅ |
 
-*Note: JSVoice automatically detects browser support via `JSVoice.isApiSupported`.*
+*Default path does **not** require `JSVoice.isApiSupported` (that flag is for Native only).*  
+*Guide: [docs/LOCAL_BROWSER_WHISPER.md](docs/LOCAL_BROWSER_WHISPER.md).*
 
 ### Install via NPM/Yarn
 
 ```bash
-npm install jsvoice
+# Default on-device Whisper path (recommended)
+npm install jsvoice @xenova/transformers
 # or
-yarn add jsvoice
+yarn add jsvoice @xenova/transformers
 ```
+
+Native-only apps can omit `@xenova/transformers` and use `createVoice({ engineMode: 'native' })`.
 
 ### ES Module Usage
 
 ```javascript
 import { createVoice } from 'jsvoice';
 
-const voice = createVoice();
+// Default: browser Whisper tiny (any modern browser)
+const voice = createVoice({
+  onModelLoadProgress: (p) => console.log(p),
+});
+
+// Optional: vendor Web Speech only
+// const voice = createVoice({ engineMode: 'native' });
 ```
 
 ### CDN Usage (Prototyping)
 
+UMD builds the core API. Full local Whisper still needs Transformers.js available to the worker (bundler or peer). For demos, prefer npm + a modern bundler.
+
 ```html
 <script src="https://unpkg.com/jsvoice/dist/voice-ui.umd.min.js"></script>
 <script>
-  const voice = JSVoice.createVoice();
+  // Prefer createVoice from ESM apps; UMD global may expose JSVoice / createVoice depending on build
+  const voice = typeof createVoice === 'function' ? createVoice() : new JSVoice({ engineMode: 'native' });
 </script>
 ```
 
@@ -292,8 +307,8 @@ Enable `debug: true` in options to see:
 
 1.  **`NotAllowedError`**: User denied microphone.
     *   *Fix:* Show a UI dialog instructing them to unblock it in the URL bar.
-2.  **`NetworkError`** (Chrome): Client is offline.
-    *   *Fix:* Chrome requires internet for high-quality recognition. Use offline fallback if available.
+2.  **`NetworkError`** (Native Chrome path): Client is offline.
+    *   *Fix:* Use default local Whisper (`createVoice()` / `engineMode: 'local'`) which works offline after the model is cached.
 3.  **`Aborted`**: Another app took the mic, or the tab went to background (mobile).
     *   *Fix:* `autoRestart: true` usually handles this.
 
@@ -301,29 +316,29 @@ Enable `debug: true` in options to see:
 
 ## 12. Security & Privacy
 
-### No Data Collection
-JSVoice does **not** collect, store, or transmit your audio. 
+### No Data Collection by JSVoice
+JSVoice does **not** collect, store, or transmit your audio to JSVoice servers.
 
-### Browser Vendors
-*   **Chrome:** Streams audio to Google Cloud (unless using on-device Speech API, available in newer Pixel phones).
-*   **Safari/iOS:** May handle on-device or send to Apple.
-*   **Firefox:** Not supported.
+### Where audio goes
+*   **Default local Whisper:** Audio is processed on-device; model weights may download from Hugging Face (or your mirror) once and cache.
+*   **Native Web Speech (`engineMode: 'native'`):** Chrome often streams to Google; Safari may use Apple services.
+*   **Server Whisper engine:** Audio is sent to your proxy / provider.
 
 ### Best Practice
-Always include a clear "Listening" indicator in your UI. Never record without user consent.
+Always include a clear "Listening" indicator. Never record without user consent. See [docs/SECURITY_AND_PRIVACY.md](docs/SECURITY_AND_PRIVACY.md).
 
 ---
 
 ## 13. FAQ
 
-**Q: Why doesn't this work in Firefox?**
-A: Mozilla has not implemented the Web Speech API (`SpeechRecognition`). There is no workaround without using a third-party paid API or our experimental WASM engine.
+**Q: Why doesn't Native mode work in Firefox?**
+A: Mozilla has not implemented the Web Speech API. Use the **default** `createVoice()` local Whisper path (or `engineMode: 'local'`), which works in Firefox with mic + Workers + `@xenova/transformers`.
 
 **Q: Can I use this completely offline?**
-A: Only on browsers that support on-device recognition (e.g., Safari on newer iOS, Chrome on Pixel). For 100% offline guarantee on all devices, you need our `LocalWhisperEngine` (separate plugin, currently beta).
+A: Yes with the **default local** path after the first model download (~30MB Whisper tiny, then cached). Use `engineMode: 'local'` and avoid Native. Install `@xenova/transformers`.
 
 **Q: Is it safe for production?**
-A: Yes, validation logic and cleanup routines are robust. However, you must handle the reality that browser speech APIs can be fickle (e.g., stopping randomly). Utilize the `autoRestart` option.
+A: Yes, when you handle permissions, secure context, and first-load model UX. Prefer default local for privacy; use `autoRestart` and clear status UI for utterance-based local STT.
 
 ---
 
@@ -331,10 +346,10 @@ A: Yes, validation logic and cleanup routines are robust. However, you must hand
 
 JSVoice follows [Semantic Versioning](https://semver.org/).
 
-*   **v2.4.x (Current):** Stability, O(1) matching, critical bug fixes.
-*   **v3.0 (Planned):**
-    *   Local WASM Wake Word (Privacy first)
-    *   Full offline engine via Transformers.js as a core option
+*   **Current:** Default on-device Whisper tiny (Transformers.js), hybrid policy, Hyper UI Kit, O(1) matching.
+*   **Planned:**
+    *   Stronger on-device wake (Porcupine / WASM KWS)
+    *   Multilingual local models as first-class options
     *   State Machine architecture refactor
 
 ### Deprecations

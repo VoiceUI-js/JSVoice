@@ -1,52 +1,67 @@
+/**
+ * LEAD (AI/humans): example engine modes for JSVoice.
+ * Full guide: docs/AI_IMPLEMENTATION.md · AGENTS.md · docs/LOCAL_BROWSER_WHISPER.md
+ * Production import: import { createVoice } from 'jsvoice';
+ * Default path needs: npm i jsvoice @xenova/transformers
+ */
+import { createVoice } from '../src/index.js'; // or 'jsvoice'
 
-import JSVoice from '../src/index.js'; // or 'jsvoice'
-
-// 1. Default Auto Mode (Recommended)
-// Tries Native (Web Speech API) first.
-// Falls back to Local (Transformers.js) if Native fails or is unsupported (e.g. Firefox).
-const voice = new JSVoice({
-    onStatusChange: (msg) => console.log('Status:', msg),
-    onEngineChange: ({ from, to, reason }) => {
-        console.log(`Switched engine from ${from} to ${to} due to: ${reason}`);
-    }
+// ---------------------------------------------------------------------------
+// 1) Default — browser Whisper tiny (any modern browser, on-device)
+// Requires: npm install @xenova/transformers
+// First run downloads ~30MB model (cached afterward).
+// ---------------------------------------------------------------------------
+const voice = createVoice({
+  onStatusChange: (msg) => console.log('Status:', msg),
+  onModelLoadProgress: (progress) => {
+    console.log(
+      'Model:',
+      progress.status,
+      progress.file || '',
+      progress.progress != null ? `${Math.round((progress.progress > 1 ? progress.progress : progress.progress * 100))}%` : ''
+    );
+  },
+  onEngineSelected: ({ engineName, mode }) => {
+    console.log('Engine selected:', engineName, 'policy mode:', mode);
+  },
+  // On save-data networks, confirm download:
+  // confirmModelDownload: true,
 });
 
-await voice.start();
-
-// 2. Force Local Mode (Zero-Rupee, Private, Offline)
-// Uses Transformers.js (Whisper Tiny) in-browser.
-// Note: First run downloads the model (~30MB).
-const privateVoice = new JSVoice({
-    engineMode: 'local',
-    localOptions: {
-        model: 'Xenova/whisper-tiny.en', // Customize model
-        device: 'webgpu' // or 'wasm'
-    },
-    onModelLoadProgress: (progress) => {
-        console.log(`Loading AI Model: ${progress.status} ${progress.progress || ''}%`);
-    }
+voice.addCommand('hello world', () => {
+  voice.speak('Hello! How can I help you?');
 });
 
-// 3. Manual Engine Switching
-// You can switch modes at runtime
-document.getElementById('toggle-engine').onclick = async () => {
-    const current = voice.options.engine.activeEngine.constructor.name;
-    if (current.includes('Native')) {
-        console.log('Switching to Local/Private Mode...');
-        await voice.options.engine._setEngine('local');
-    } else {
-        console.log('Switching to Native/Online Mode...');
-        await voice.options.engine._setEngine('native');
-    }
-};
+// await voice.start(); // after a user gesture
 
-// 4. Using the Visualizer (Safe with Hybrid Engine)
-import { AudioVisualizer } from '../src/index.js';
-
-const visualizer = new AudioVisualizer();
-voice.use(() => {
-    // Hook into voice start
-    voice.startAmplitude((data) => {
-        // Draw visualization...
-    });
+// ---------------------------------------------------------------------------
+// 2) Opt-in Native Web Speech (no model download; browser-dependent)
+// ---------------------------------------------------------------------------
+const nativeVoice = createVoice({
+  engineMode: 'native',
+  onStatusChange: (msg) => console.log('Native status:', msg),
 });
+
+// ---------------------------------------------------------------------------
+// 3) Local-first auto (fall back to Native if local cannot init)
+// ---------------------------------------------------------------------------
+const autoVoice = createVoice({
+  engineMode: 'auto',
+  localOptions: {
+    vad: { silenceMs: 1000 },
+  },
+});
+
+// ---------------------------------------------------------------------------
+// 4) Force private local with custom VAD
+// ---------------------------------------------------------------------------
+const privateVoice = createVoice({
+  engineMode: 'local',
+  localOptions: {
+    model: 'Xenova/whisper-tiny.en',
+    maxRecordMs: 12000,
+    vad: { enabled: true, silenceMs: 900, energyThreshold: 0.02 },
+  },
+});
+
+export { voice, nativeVoice, autoVoice, privateVoice };

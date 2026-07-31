@@ -1,3 +1,23 @@
+/**
+ * =============================================================================
+ * JSVoice — package entry (`import { createVoice } from 'jsvoice'`)
+ * =============================================================================
+ * START HERE (AI agents & integrators):
+ *   - docs/AI_IMPLEMENTATION.md  (full implement guide — also in npm package)
+ *   - AGENTS.md                  (short non-negotiable rules)
+ *   - llms.txt                   (doc index for LLMs)
+ *   - docs/LOCAL_BROWSER_WHISPER.md
+ *
+ * RULES:
+ *   1. Prefer createVoice() — do not use bare new JSVoice() without an engine.
+ *   2. Default engineMode is 'local' (on-device Whisper tiny.en, any modern browser).
+ *   3. Peer required for default path: npm i @xenova/transformers
+ *   4. Do NOT gate apps on JSVoice.isApiSupported (Native Web Speech only).
+ *   5. start()/toggle() only after a user gesture (click).
+ *   6. engineMode: 'native' | 'auto' | 'local' — see HybridSpeechEngine.
+ *   7. jsvoice/engines/whisper is SERVER/API Whisper, not browser tiny.
+ * =============================================================================
+ */
 import JSVoice from './JSVoice.js';
 import NativeSpeechEngine from './engines/NativeSpeechEngine.js';
 import HybridSpeechEngine from './engines/HybridSpeechEngine.js';
@@ -5,54 +25,55 @@ import { AudioVisualizer } from './modules/AudioVisualizer.js';
 import { microphoneManager } from './modules/MicrophoneManager.js';
 
 /**
- * Creates a JSVoice instance with robust fallback support.
- * By default, uses 'auto' mode: Native -> Local Fallback.
- * 
- * @param {import('./JSVoice').JSVoiceOptions} options 
+ * Creates a JSVoice instance with batteries-included defaults.
+ *
+ * Default speech understander: **browser Whisper-tiny** (local, any modern browser).
+ * Opt into vendor Web Speech with `{ engineMode: 'native' }`.
+ *
+ * Requires optional peer for default path:
+ *   npm install @xenova/transformers
+ *
+ * AI/implement guide: docs/AI_IMPLEMENTATION.md · AGENTS.md
+ *
+ * @param {import('./JSVoice').JSVoiceOptions} options
  * @returns {JSVoice}
  */
 export function createVoice(options = {}) {
-    const defaultOptions = {
-        // Wrap strict engine logic in Hybrid wrapper
-        engine: new HybridSpeechEngine({
-            mode: options.engineMode || 'auto',
-            // Pass specific options for nested engines if needed
-            native: options.nativeOptions || {},
-            local: options.localOptions || {}
-        }),
-        ...options
-    };
+  const engineMode = options.engineMode || 'local';
 
-    // We pass the hybrid engine as the 'speechEngine' instance to JSVoice
-    // Logic inside JSVoice/RecognitionManager should accept this engine interface.
-    // Note: JSVoice constructor usually takes specific options. 
-    // If JSVoice expects 'engines' array (Legacy), we might need to adjust.
-    // Looking at previous index.js, it used `engines: [NativeSpeechEngine]`.
-    // It seems JSVoice class might instantiate them?
-    // Let's verify JSVoice.js in next step.
+  const hybrid = new HybridSpeechEngine({
+    mode: engineMode,
+    native: options.nativeOptions || {},
+    local: {
+      model: 'Xenova/whisper-tiny.en',
+      ...(options.localOptions || {}),
+    },
+    continuous: options.continuous,
+    interimResults: options.interimResults,
+    lang: options.lang,
+    autoRestart: options.autoRestart,
+    restartDelay: options.restartDelay,
+    onModelLoadProgress: options.onModelLoadProgress,
+    onEngineSelected: options.onEngineSelected,
+    onFallbackActivated: options.onFallbackActivated,
+    onTelemetry: options.onTelemetry,
+    confirmModelDownload: options.confirmModelDownload ?? options.localOptions?.confirmModelDownload,
+  });
 
-    // Assuming JSVoice constructor allows passing an *instance* or *class*.
-    // The previous index.js did `engines: [NativeSpeechEngine]`.
-    // This implies JSVoice might traverse this list.
-    // BUT user request says: "Make JSVoice use... Native... by default".
-    // I am changing the default to Hybrid. 
-    // If JSVoice.js instantiates from a list, I should provide:
-    // engines: [HybridSpeechEngine] ?
-    // Or does JSVoice accept an instance?
+  const voice = new JSVoice({
+    ...options,
+    engine: hybrid,
+  });
 
-    // I will check JSVoice.js shortly. For now, writing what seems likely compatible with new goal.
-    // If I pass 'engine' instance, it overrides 'engines' class list?
-
-    const voice = new JSVoice(defaultOptions);
-    return voice;
+  return voice;
 }
 
 export {
-    JSVoice,
-    NativeSpeechEngine,
-    HybridSpeechEngine,
-    AudioVisualizer,
-    microphoneManager
+  JSVoice,
+  NativeSpeechEngine,
+  HybridSpeechEngine,
+  AudioVisualizer,
+  microphoneManager,
 };
 
 export default createVoice;

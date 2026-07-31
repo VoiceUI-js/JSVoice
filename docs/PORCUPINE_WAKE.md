@@ -1,11 +1,11 @@
 # Optional Porcupine wake-word adapter
 
-JSVoice’s built-in wake word is **transcript-based** (listens for a phrase inside STT results). For production on-device keyword spotting, use the optional **Picovoice Porcupine** adapter.
+JSVoice’s built-in wake word is **transcript-based** (listens for a phrase inside STT results). With the **default local Whisper** path those transcripts stay on-device; with `engineMode: 'native'` they may use a cloud STT service. For production always-on keyword spotting without full STT, use the optional **Picovoice Porcupine** adapter.
 
 ## Install peers
 
 ```bash
-npm i jsvoice
+npm i jsvoice @xenova/transformers   # default STT
 npm i @picovoice/porcupine-web @picovoice/web-voice-processor
 ```
 

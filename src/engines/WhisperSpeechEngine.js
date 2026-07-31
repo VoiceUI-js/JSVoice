@@ -1,15 +1,24 @@
+/**
+ * SERVER / API Whisper engine (jsvoice/engines/whisper) — NOT the default.
+ *
+ * LEAD (AI/integrators):
+ *   Default browser STT is LocalTransformersSpeechEngine (createVoice → local).
+ *   This file uploads audio to a backend/OpenAI-style API (examples/WHISPER_INTEGRATION.md).
+ *   Do not use this as the "any browser open-source tiny model" path.
+ *   For on-device tiny: docs/LOCAL_BROWSER_WHISPER.md · jsvoice/engines/local
+ */
 import BaseSpeechEngine from './BaseSpeechEngine.js';
 
 /**
- * Reference implementation of a Whisper-based Speech Engine.
- * 
+ * Reference implementation of a Whisper-based Speech Engine (server/proxy).
+ *
  * DESIGN NOTES:
  * 1. Security: API keys effectively cannot be safe in client-side code unless the user provides them.
  *    For production, this engine should point to your own backend proxy (see examples/backend).
  * 2. Latency: Whisper is file-based (record -> stop -> upload -> transcribe).
  *    This means higher latency than Native Web Speech (streaming).
- * 3. Strategy: This engine uses a "Push-to-Talk" model or manual stop. 
- *    Continuous "streaming" requires complex VAD (Voice Activity Detection) or chunking logic 
+ * 3. Strategy: This engine uses a "Push-to-Talk" model or manual stop.
+ *    Continuous "streaming" requires complex VAD (Voice Activity Detection) or chunking logic
  *    which is outside the scope of a reference implementation.
  */
 class WhisperSpeechEngine extends BaseSpeechEngine {

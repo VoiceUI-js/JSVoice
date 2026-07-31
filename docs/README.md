@@ -2,16 +2,29 @@
 
 Product docs for the JSVoice library.
 
+> ### Start here
+>
+> | Role | Open first |
+> |------|------------|
+> | **AI / copilots** | [AI_IMPLEMENTATION.md](AI_IMPLEMENTATION.md) → [../AGENTS.md](../AGENTS.md) |
+> | **Integrating the library** | [LOCAL_BROWSER_WHISPER.md](LOCAL_BROWSER_WHISPER.md) + [API_REFERENCE.md](API_REFERENCE.md) |
+> | **End users** | [USER_GUIDE.md](USER_GUIDE.md) |
+> | **Full narrative** | [../DOCUMENTATION.md](../DOCUMENTATION.md) · [../README.md](../README.md) |
+
 ## Main documentation
 
 | Document | Purpose |
 |----------|---------|
+| [AI_IMPLEMENTATION.md](AI_IMPLEMENTATION.md) | **For AI agents** — implement JSVoice correctly end-to-end |
+| [../AGENTS.md](../AGENTS.md) | Short AI rules (ships with package) |
+| [../llms.txt](../llms.txt) | LLM index pointers |
 | [DOCUMENTATION.md](../DOCUMENTATION.md) | Full developer guide |
 | [USER_GUIDE.md](USER_GUIDE.md) | Non-developer / end-user manual |
 | [API_REFERENCE.md](API_REFERENCE.md) | API-only reference |
 | [README.md](../README.md) | Quick start and overview |
 | [DETAILED_DOCUMENTATION.md](../DETAILED_DOCUMENTATION.md) | Extended notes / legacy guide |
 | [SECURITY_AND_PRIVACY.md](SECURITY_AND_PRIVACY.md) | Engines, mic lifecycle, voice→DOM risk |
+| [LOCAL_BROWSER_WHISPER.md](LOCAL_BROWSER_WHISPER.md) | **Default** on-device Whisper tiny (any browser) |
 | [PORCUPINE_WAKE.md](PORCUPINE_WAKE.md) | Optional on-device wake adapter |
 | [E2E.md](E2E.md) | Playwright harness |
 | [STORYBOOK.md](STORYBOOK.md) | Component stories |
@@ -41,5 +54,7 @@ Product docs for the JSVoice library.
 ## Who should read what
 
 - **New users:** [README.md](../README.md) → [USER_GUIDE.md](USER_GUIDE.md) → [examples/](../examples/)
-- **Integrators:** [DOCUMENTATION.md](../DOCUMENTATION.md) → [API_REFERENCE.md](API_REFERENCE.md)
+- **AI / copilots:** [AI_IMPLEMENTATION.md](AI_IMPLEMENTATION.md) → [../AGENTS.md](../AGENTS.md)
+- **Integrators:** [LOCAL_BROWSER_WHISPER.md](LOCAL_BROWSER_WHISPER.md) → [DOCUMENTATION.md](../DOCUMENTATION.md) → [API_REFERENCE.md](API_REFERENCE.md)
+- **Privacy reviewers:** [SECURITY_AND_PRIVACY.md](SECURITY_AND_PRIVACY.md)
 - **Contributors:** [CONTRIBUTING.md](../CONTRIBUTING.md)

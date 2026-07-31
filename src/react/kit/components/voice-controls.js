@@ -560,7 +560,11 @@ export function VoicePermissionCard({ style }) {
       { style: { margin: '0 0 12px', paddingLeft: 18, color: 'var(--jsv-text-muted)' } },
       React.createElement('li', null, `Microphone: ${perms.microphone}`),
       React.createElement('li', null, `Secure context: ${perms.secureContext ? 'yes' : 'no (HTTPS required)'}`),
-      React.createElement('li', null, `Web Speech API: ${perms.speechRecognition ? 'supported' : 'not supported'}`),
+      React.createElement(
+        'li',
+        null,
+        `Native Web Speech API: ${perms.speechRecognition ? 'supported' : 'not supported'} (default local Whisper does not require it)`
+      ),
       React.createElement('li', null, `Speech synthesis: ${perms.speechSynthesis ? 'supported' : 'not supported'}`),
       React.createElement(
         'li',
@@ -610,7 +614,7 @@ export function VoiceEngineSwitcher({ style }) {
     React.createElement(
       'p',
       { style: { margin: 0, fontSize: 'var(--jsv-font-size-sm)', color: 'var(--jsv-text-muted)' } },
-      'Engine switching is controlled via createVoice({ engineMode }) / injected engines. Hybrid mode uses Native first, then local fallback.'
+      'Engine switching is controlled via createVoice({ engineMode }). Default is local Whisper tiny; use "native" for vendor Web Speech, or "auto" for local-first with native fallback.'
     ),
     voice?.options?.engineMode &&
       React.createElement(

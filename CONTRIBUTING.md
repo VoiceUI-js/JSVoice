@@ -199,9 +199,11 @@ npm test
 * Link them from the main README if they’re important for users.
 * Examples:
 
-  * `docs/getting-started.md`
-  * `docs/adding-actions.md`
-  * `docs/browser-support.md`
+  * `docs/AI_IMPLEMENTATION.md` (AI agent implementation guide — keep in sync with behavior)
+  * `AGENTS.md` / `llms.txt` (short AI entry points)
+  * `docs/LOCAL_BROWSER_WHISPER.md` (default on-device Whisper)
+  * `docs/SECURITY_AND_PRIVACY.md`
+  * `docs/API_REFERENCE.md`
 
 ---
 

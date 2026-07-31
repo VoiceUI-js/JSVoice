@@ -1,6 +1,9 @@
 # Playwright E2E
 
-Harness: `e2e/harness.html` (FakeSpeechEngine + JSVoice core).
+Harness: `e2e/harness.html` (**FakeSpeechEngine** + JSVoice core).
+
+The harness injects a fake engine so CI does **not** download Whisper weights.  
+Unit tests cover default `createVoice({ engineMode: 'local' })` with a mocked worker.
 
 ```bash
 npm install
@@ -19,3 +22,5 @@ Scenarios:
 - keyboard focus on control  
 
 Config: `playwright.config.js` (serves repo root on port 4173).
+
+**Real browser Whisper** is validated manually (Chrome + Firefox) after installing `@xenova/transformers`. See [LOCAL_BROWSER_WHISPER.md](LOCAL_BROWSER_WHISPER.md).

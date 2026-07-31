@@ -2,7 +2,11 @@
 
 **Package:** `jsvoice@1.1.0`  
 **Audience:** developers  
-**Style:** reference only (no tutorials). For guides see [DOCUMENTATION.md](../DOCUMENTATION.md).
+**Style:** reference only (no tutorials).
+
+> **Lead:** Prefer `createVoice()` (`engineMode: 'local'` by default).  
+> Full recipes & anti-patterns for AI/humans: **[AI_IMPLEMENTATION.md](./AI_IMPLEMENTATION.md)** · [AGENTS.md](../AGENTS.md) · [LOCAL_BROWSER_WHISPER.md](./LOCAL_BROWSER_WHISPER.md).  
+> Narrative guide: [DOCUMENTATION.md](../DOCUMENTATION.md).
 
 ---
 
@@ -36,8 +40,10 @@ import createVoice, { createVoice, JSVoice, /* engines re-exports */ } from 'jsv
 import JSVoice from 'jsvoice/core';
 
 // Engines
+import LocalTransformersSpeechEngine from 'jsvoice/engines/local';
+import HybridSpeechEngine from 'jsvoice/engines/hybrid';
 import NativeSpeechEngine from 'jsvoice/engines/native';
-import WhisperSpeechEngine from 'jsvoice/engines/whisper';
+import WhisperSpeechEngine from 'jsvoice/engines/whisper'; // server/API path
 import {
   createPorcupineWakeAdapter,
   loadPorcupineModules,
@@ -93,11 +99,23 @@ function createVoice(options?: JSVoiceOptions): JSVoice
 
 **Default export** of `jsvoice` is also `createVoice`.
 
-Creates a `JSVoice` instance with hybrid engine defaults (Native → local fallback when configured by factory).
+Creates a `JSVoice` instance with **local Whisper tiny** as the default understander (`engineMode: 'local'`).
+
+Requires optional peer `@xenova/transformers` for the default path. See [LOCAL_BROWSER_WHISPER.md](LOCAL_BROWSER_WHISPER.md).
 
 | Param | Type | Description |
 |-------|------|-------------|
-| `options` | `JSVoiceOptions` | Same as `new JSVoice(options)` |
+| `options` | `JSVoiceOptions` | Same as `new JSVoice(options)` plus factory fields below |
+
+**Factory-only options (createVoice):**
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `engineMode` | `'local'` | `'local'` \| `'native'` \| `'auto'` |
+| `localOptions` | `{ model: 'Xenova/whisper-tiny.en', … }` | Passed to `LocalTransformersSpeechEngine` |
+| `nativeOptions` | `{}` | Passed to `NativeSpeechEngine` |
+| `onModelLoadProgress` | — | Model download progress (local path) |
+| `confirmModelDownload` | — | `true` or `() => boolean` for save-data networks |
 
 **Returns:** `JSVoice`
 
@@ -117,7 +135,7 @@ class JSVoice {
 
 | Member | Type | Description |
 |--------|------|-------------|
-| `isApiSupported` | `boolean` | `true` if `SpeechRecognition` / `webkitSpeechRecognition` exists on `window` |
+| `isApiSupported` | `boolean` | `true` if **Native** Web Speech exists. Default local Whisper does not require this. |
 
 ### Lifecycle
 
@@ -253,6 +271,9 @@ interface JSVoiceOptions {
 | `defaultScope` | `'global'` | Default command scope. |
 | `engine` | — | Injected engine instance. |
 | `engines` | `[]` | Classes to probe if no `engine`. |
+| `engineMode` | `'local'` | **createVoice:** `'local'` \| `'native'` \| `'auto'`. |
+| `localOptions` | — | **createVoice:** options for local Whisper engine. |
+| `nativeOptions` | — | **createVoice:** options for Native engine. |
 | `plugins` | `[]` | Applied in constructor. |
 | `skipMicrophoneCheck` | `false` | Skip `getUserMedia` (tests). |
 
@@ -305,8 +326,9 @@ Set via constructor `options` or merged into internal callback bag.
 | `onEngineStateChange` | `(state: EngineState, details?: any) => void` | Engine state |
 | `onCommandEvaluated` | `(event: CommandDebugEvent) => void` | Debug evaluation |
 | `onEngineSelected` | `(info: any) => void` | Engine chosen |
-| `onFallbackActivated` | `(info: any) => void` | Hybrid fallback |
+| `onFallbackActivated` | `(info: any) => void` | Hybrid fallback (e.g. local → native in `auto`) |
 | `onTelemetry` | `(payload: any) => void` | Telemetry events |
+| `onModelLoadProgress` | `(progress: ModelLoadProgress) => void` | Local Whisper model download (via `createVoice`) |
 
 ```ts
 type EngineState =
@@ -379,16 +401,20 @@ class BaseSpeechEngine {
 
 | Export path | Class | Notes |
 |-------------|-------|-------|
-| `jsvoice/engines/native` | `NativeSpeechEngine` | Web Speech API |
-| Hybrid | via `createVoice` / `HybridSpeechEngine` | Native + fallback |
-| `jsvoice/engines/whisper` | `WhisperSpeechEngine` | Whisper path |
-| Local Transformers | `LocalTransformersSpeechEngine` | On-device model path |
+| `jsvoice/engines/local` | `LocalTransformersSpeechEngine` | **Default** on-device Whisper tiny.en (`createVoice`) |
+| `jsvoice/engines/hybrid` | `HybridSpeechEngine` | Policy wrapper: `local` / `native` / `auto` |
+| `jsvoice/engines/native` | `NativeSpeechEngine` | Vendor Web Speech (opt-in via `engineMode: 'native'`) |
+| `jsvoice/engines/whisper` | `WhisperSpeechEngine` | Server / API Whisper (proxy) |
 
 Inject:
 
 ```ts
+// Recommended
+createVoice(); // local Whisper
+createVoice({ engineMode: 'native' });
+
+// Advanced
 new JSVoice({ engine: engineInstance })
-// or
 new JSVoice({ engines: [NativeSpeechEngine] })
 ```
 

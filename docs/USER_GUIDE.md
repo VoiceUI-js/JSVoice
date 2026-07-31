@@ -41,12 +41,15 @@ You might see:
 
 | Requirement | Why |
 |-------------|-----|
-| **Chrome, Edge, or another modern browser** | Best speech support (varies by browser) |
+| **Modern browser** (Chrome, Edge, Firefox, Safari, …) | Default speech runs **in the browser** (private Whisper model) |
 | **Microphone** | So the app can hear you |
 | **Permission granted** | Browser will ask “Allow microphone?” |
 | **Secure page** | Usually `https://…` or `http://localhost` |
+| **First-time model load** (many apps) | App may download a speech model once (~30MB), then cache it |
 
 If the page is not secure, the browser may **block** the microphone. That is normal browser security, not a broken app.
+
+Some apps show **“Loading speech model…”** the first time — wait until it finishes, then try again.
 
 ---
 
@@ -156,9 +159,10 @@ For **delete**, **pay**, **log out**, or **submit**, good apps will:
 | Speak **clearly** and at normal speed | Fewer mis-hears |
 | Use a **quiet room** or headset mic | Less background noise |
 | Use the **exact phrases** from Help / palette | Matching is phrase-based |
-| Wait for **Listening** before speaking | Audio may be ignored otherwise |
+| Wait for **Listening** (not “Loading model…”) before speaking | First visit may load the speech model |
+| Pause briefly after a command | Default recognition often waits for a short silence, then “understands” |
 | Prefer **short commands** | Long sentences often fail |
-| Check language in Settings | Wrong language = bad results |
+| Check language in Settings | Default on-device model is **English**; other languages may need app settings |
 
 If the app shows what it heard (transcript) and it is wrong, try again or use the palette.
 
@@ -168,12 +172,12 @@ If the app shows what it heard (transcript) and it is wrong, try again or use th
 
 ### What the app may hear
 
-While listening is **on**, the app (and sometimes the **browser’s speech service**) processes your microphone audio to turn speech into text.
+While listening is **on**, the app processes your microphone audio to turn speech into text.
 
 | Mode (set by developers) | What to know |
 |--------------------------|--------------|
-| Browser built-in speech | Audio may be processed by the browser/vendor (not always fully private) |
-| On-device / local mode | Speech may stay on your device when configured that way |
+| **On-device Whisper (default in JSVoice apps)** | Speech is processed **on your device**; first use may download a model once |
+| Browser built-in speech (optional) | Audio may go to the browser/vendor (not always fully private) |
 | Transcripts | Many apps **do not save** speech text unless you opt in |
 
 ### Good habits
@@ -195,11 +199,13 @@ More detail for technical teams: [SECURITY_AND_PRIVACY.md](SECURITY_AND_PRIVACY.
 
 | Problem | What to try |
 |---------|-------------|
-| No sound / no response | Click Start; check status is Listening |
+| “Loading speech model…” forever | Wait for progress; check network; reload; ask support if it fails |
+| No sound / no response | Click Start; wait until status is **Listening** (not loading) |
 | Browser blocks mic | Click the lock/info icon in the address bar → allow microphone → reload |
 | “Not secure” / no mic | Open the site via HTTPS or ask your admin for a secure link |
 | Wrong words in transcript | Speak slower; reduce noise; try the command palette |
-| Works for others, not you | Try Chrome/Edge; check OS mic privacy settings |
+| Works for others, not you | Try another modern browser (Chrome, Edge, Firefox, Safari); check OS mic privacy |
+| Only works in Chrome, not Firefox | Ask the app team to use default **on-device** speech (not native-only) |
 | App talks too much | Mute in dock or lower system volume |
 | Nothing happens after a command | Phrase may not exist — open Help or palette for the list |
 | Accidental action | Use Undo if offered; contact the product team for sensitive mistakes |
@@ -209,7 +215,8 @@ More detail for technical teams: [SECURITY_AND_PRIVACY.md](SECURITY_AND_PRIVACY.
 1. Address bar shows a **padlock** (HTTPS) or you are on **localhost**.  
 2. Site permission: **Microphone = Allow**.  
 3. OS settings: app/browser may use the microphone.  
-4. Correct **input device** selected in OS sound settings.
+4. Correct **input device** selected in OS sound settings.  
+5. If prompted, allow the **speech model download** on first use.
 
 ---
 

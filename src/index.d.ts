@@ -1,5 +1,15 @@
-// Type definitions for jsvoice 0.2.1
-// Project: https://github.com/yourusername/jsvoice
+/**
+ * Type definitions for jsvoice
+ *
+ * START HERE (AI & integrators):
+ *   docs/AI_IMPLEMENTATION.md · AGENTS.md · llms.txt · docs/LOCAL_BROWSER_WHISPER.md
+ *
+ * Defaults:
+ *   createVoice() → engineMode 'local' → Xenova/whisper-tiny.en (peer: @xenova/transformers)
+ *   Do not gate on isApiSupported (Native Web Speech only).
+ *   start()/toggle() require a user gesture.
+ */
+// Project: https://github.com/VoiceUI-js/VoiceUI
 // Definitions by: JSVoice Contributors
 
 declare module 'jsvoice' {
@@ -16,6 +26,37 @@ declare module 'jsvoice' {
     /**
      * Configuration options for JSVoice instance
      */
+    export type EngineMode = 'local' | 'native' | 'auto';
+
+    export interface LocalVadOptions {
+        enabled?: boolean;
+        silenceMs?: number;
+        energyThreshold?: number;
+        minSpeechMs?: number;
+    }
+
+    export interface LocalEngineOptions {
+        /** Default: Xenova/whisper-tiny.en (English, ~30MB) */
+        model?: string;
+        maxRecordMs?: number;
+        allowCdnFallback?: boolean;
+        requireUserConfirmOnSaveData?: boolean;
+        /** true, or async () => boolean — required on saveData networks */
+        confirmModelDownload?: boolean | (() => boolean | Promise<boolean>);
+        vad?: LocalVadOptions;
+        onModelLoadProgress?: (progress: ModelLoadProgress) => void;
+        onTelemetry?: (event: Record<string, unknown>) => void;
+        /** Test-only: inject a mock Worker */
+        WorkerFactory?: () => Worker;
+    }
+
+    export interface ModelLoadProgress {
+        status?: string;
+        progress?: number;
+        file?: string;
+        name?: string;
+    }
+
     export interface JSVoiceOptions {
         /** Enable debug mode for command tracing */
         debug?: boolean;
@@ -23,9 +64,32 @@ declare module 'jsvoice' {
         /** Default scope for new commands (default: 'global') */
         defaultScope?: string;
 
+        /**
+         * Speech engine mode for createVoice().
+         * Default: **'local'** — on-device Whisper tiny (any modern browser).
+         * Use 'native' for vendor Web Speech (no model download).
+         * Use 'auto' for local-first with native fallback if local fails.
+         */
+        engineMode?: EngineMode;
+
+        /** Options for LocalTransformersSpeechEngine (browser Whisper) */
+        localOptions?: LocalEngineOptions;
+
+        /** Options for NativeSpeechEngine */
+        nativeOptions?: Record<string, unknown>;
+
+        /** Model download progress (local engine) */
+        onModelLoadProgress?: (progress: ModelLoadProgress) => void;
+
+        /** Confirm model download on save-data networks */
+        confirmModelDownload?: boolean | (() => boolean | Promise<boolean>);
+
+        onEngineSelected?: (info: { engineName: string; mode: string; reason?: string }) => void;
+        onFallbackActivated?: (info: { from: string; to: string; reason?: string }) => void;
+        onTelemetry?: (event: Record<string, unknown>) => void;
+
         /** If true, recognition continues even if the user pauses speaking */
         continuous?: boolean;
-        // ... (rest of simple types)
         interimResults?: boolean;
         lang?: string;
         autoRestart?: boolean;
@@ -66,6 +130,23 @@ declare module 'jsvoice' {
 
         /** NEW: Fired when a command is processed (debug mode only) */
         onCommandEvaluated?: (event: CommandDebugEvent) => void;
+    }
+
+    export class LocalTransformersSpeechEngine extends BaseSpeechEngine {
+        static readonly isSupported: boolean;
+        static readonly defaultModel: string;
+        static shouldPromptForModelDownload(): boolean;
+        confirmDownload(): void;
+        dispose(): void;
+    }
+
+    export class HybridSpeechEngine extends BaseSpeechEngine {
+        setEngineMode(mode: EngineMode): Promise<void>;
+        getActiveMode(): string | null;
+    }
+
+    export class NativeSpeechEngine extends BaseSpeechEngine {
+        static readonly isSupported: boolean;
     }
 
     export interface CommandOptions {

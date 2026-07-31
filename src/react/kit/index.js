@@ -1,6 +1,13 @@
 /**
- * @jsvoice/react/kit
- * Hyper Voice UI Kit — Phase 1 + Phase 2 production React surface.
+ * @jsvoice/react/kit — Hyper Voice UI Kit (React)
+ *
+ * LEAD (AI/integrators):
+ *   1. Create voice with createVoice() from 'jsvoice' (default local Whisper).
+ *   2. Pass that instance to <VoiceKitProvider voice={voice}>.
+ *   3. Client-only / SSR-safe (guard window; Next: 'use client').
+ *   4. Model progress: VoiceModelLoadCard · onModelLoadProgress on createVoice.
+ *   5. Guides: docs/AI_IMPLEMENTATION.md · docs/HYPER_VOICE_UI_KIT.md · AGENTS.md
+ *   6. Peer: react, react-dom; STT peer: @xenova/transformers
  */
 
 // Provider
@@ -396,6 +403,8 @@ export {
   VoiceFallbackNotice,
   VoiceRecoveryPanel,
   VoiceTroubleshootingSteps,
+  VoiceModelLoadCard,
+  VoiceTransformersMissingCard,
 } from './components/errors.js';
 
 // Layouts

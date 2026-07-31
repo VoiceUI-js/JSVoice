@@ -13,7 +13,7 @@ If running the demo app:
 ## Components
 
 ### 1. FakeSpeechEngine
-A mock engine that replaces the Web Speech API. It accepts text input programmatically and emits "speech" events exactly as the real engine would.
+A mock engine that replaces real STT (Native Web Speech or local Whisper). It accepts text input programmatically and emits "speech" events exactly as a real engine would.
 
 ### 2. VoiceHarness
 A utility class that wraps a JSVoice instance for testing. It provides methods to:

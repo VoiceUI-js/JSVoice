@@ -1,7 +1,7 @@
 {
   "name": "jsvoice",
   "version": "1.1.0",
-  "description": "Modern JavaScript voice command library with speech recognition, synthesis, pattern matching, wake word detection, and real-time audio visualization. Zero dependencies, TypeScript ready, perfect for accessibility and voice-first UIs.",
+  "description": "Voice commands for the web. Default: on-device Whisper tiny (any browser; peer @xenova/transformers). Use createVoice(). AI agents: read AGENTS.md + docs/AI_IMPLEMENTATION.md. Optional Web Speech, React kit, wake word. TypeScript ready.",
   "main": "dist/voice-ui.cjs.js",
   "module": "dist/voice-ui.esm.js",
   "unpkg": "dist/voice-ui.umd.min.js",
@@ -29,6 +29,14 @@
     },
     "./engines/whisper": {
       "import": "./src/engines/WhisperSpeechEngine.js",
+      "types": "./src/index.d.ts"
+    },
+    "./engines/local": {
+      "import": "./src/engines/LocalTransformersSpeechEngine.js",
+      "types": "./src/index.d.ts"
+    },
+    "./engines/hybrid": {
+      "import": "./src/engines/HybridSpeechEngine.js",
       "types": "./src/index.d.ts"
     },
     "./engines/porcupine-wake": {
@@ -158,9 +166,16 @@
     "dist/",
     "src/",
     "examples/",
+    "AGENTS.md",
+    "llms.txt",
+    "docs/AI_IMPLEMENTATION.md",
+    "docs/LOCAL_BROWSER_WHISPER.md",
     "docs/SECURITY_AND_PRIVACY.md",
     "docs/USER_GUIDE.md",
     "docs/API_REFERENCE.md",
+    "docs/README.md",
+    "docs/HYPER_VOICE_MIGRATION.md",
+    "docs/HYPER_VOICE_UI_KIT.md",
     "DOCUMENTATION.md",
     "DETAILED_DOCUMENTATION.md",
     "README.md",
@@ -197,7 +212,10 @@
     "ux",
     "pwa",
     "progressive-web-app",
-    "zero-dependencies",
+    "whisper",
+    "transformers.js",
+    "offline-speech",
+    "on-device",
     "lightweight"
   ],
   "repository": {
@@ -214,7 +232,8 @@
     "react": ">=17",
     "react-dom": ">=17",
     "@picovoice/porcupine-web": ">=3",
-    "@picovoice/web-voice-processor": ">=4"
+    "@picovoice/web-voice-processor": ">=4",
+    "@xenova/transformers": "^2.17.2"
   },
   "peerDependenciesMeta": {
     "react": {
@@ -227,6 +246,9 @@
       "optional": true
     },
     "@picovoice/web-voice-processor": {
+      "optional": true
+    },
+    "@xenova/transformers": {
       "optional": true
     }
   },

@@ -1,4 +1,29 @@
-# Migration (Phase 1 → Phase 2)
+# Migration
+
+## Default speech engine (createVoice)
+
+| Before | After |
+|--------|--------|
+| `createVoice()` preferred **Native** Web Speech | `createVoice()` defaults to **local Whisper tiny** (`engineMode: 'local'`) |
+| Local was opt-in | Local is default; install peer `@xenova/transformers` |
+| Firefox needed special hybrid fallback | Firefox works on the default local path |
+
+**Restore previous Native-first preference:**
+
+```js
+createVoice({ engineMode: 'native' })
+```
+
+**Docs:** [LOCAL_BROWSER_WHISPER.md](LOCAL_BROWSER_WHISPER.md) · [SECURITY_AND_PRIVACY.md](SECURITY_AND_PRIVACY.md)
+
+### Kit UI additions
+
+- `VoiceModelLoadCard` — first-load model progress  
+- `VoiceTransformersMissingCard` — missing `@xenova/transformers` peer  
+
+---
+
+## Hyper Kit Phase 1 → Phase 2
 
 ## Safe upgrades
 

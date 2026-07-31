@@ -1,3 +1,15 @@
+/**
+ * =============================================================================
+ * JSVoice core class — pure command/TTS/lifecycle logic (no default engine).
+ * =============================================================================
+ * Prefer:  import { createVoice } from 'jsvoice'   // injects Hybrid + local Whisper
+ * Avoid:   new JSVoice() without `engine` or `engines` (will warn / not listen)
+ *
+ * isApiSupported = Native Web Speech only. Default local Whisper does NOT need it.
+ *
+ * Guides: docs/AI_IMPLEMENTATION.md · AGENTS.md · docs/API_REFERENCE.md
+ * =============================================================================
+ */
 import { callCallback, cleanText } from './utils/helpers.js';
 import { logger } from './utils/Logger.js';
 import { initRecognition, checkMicrophonePermission } from './modules/RecognitionManager.js';
@@ -6,10 +18,15 @@ import { handleBuiltInActions } from './modules/BuiltInActions.js';
 
 /**
  * JSVoice Core
- * A modular voice command library. 
+ * A modular voice command library.
  * NOTE: This class is pure logic. It does NOT bundle engines by default.
+ * Production apps should use createVoice() from src/index.js / 'jsvoice'.
  */
 class JSVoice {
+  /**
+   * True if the browser exposes Native Web Speech (`SpeechRecognition`).
+   * Does NOT mean local Whisper is unavailable — default createVoice() uses local STT.
+   */
   static get isApiSupported() {
     // Only check if window exists (SSR Guard)
     if (typeof globalThis.window === 'undefined') return false;
